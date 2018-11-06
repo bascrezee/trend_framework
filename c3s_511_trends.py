@@ -33,7 +33,27 @@ class TrendLims1D:
         self.fitted = {}
     def __load_data__(self):
         if self.datatag=='artificial':
-            raise NotImplementedError
+            self.add_to_logbook("Created an artificial timeseries")
+            # Create 100 years of artificial data
+            timeline = pd.date_range('1/1/1901', periods=100, freq='Y')
+            # Convert to time in floats, counting in decades from starting time
+            timediff = timeline-pd.datetime(1901,1,1)
+            decadal_time = timediff.total_seconds()/(3600.*24.*365.25*10) # Convert to units decades
+            
+            # Parameters for creating random test data
+            mean = 1
+            trend_magnitude = 0.03
+            noise_magnitude = 0.05
+            jump_magnitude = 0.05
+            jump_start = 20
+            jump_end = 40
+            
+            jump_axis = np.zeros_like(decadal_time)
+            jump_axis[20:40] = 1
+            noise_axis = np.random.uniform(-1,1,len(decadal_time))
+            
+            artificial_data = mean + trend_magnitude*decadal_time + jump_magnitude*jump_axis + noise_magnitude*noise_axis
+            self.data_ts = pd.Series(data=artificial_data,index=timeline)
         elif os.path.splitext(self.datatag)[-1]=='.nc':
             self.add_to_logbook("Loaded datafile {0}".format(self.datatag))
             datafile = os.path.join('./test_data/',self.datatag)
