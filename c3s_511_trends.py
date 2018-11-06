@@ -15,10 +15,6 @@ import matplotlib.pyplot as plt
 import pprint
 
 
-'''
-TODO BAS:
-- Check coding outlines ESMVal
-'''
 
 class TrendLims1D:
     def __init__(self,name,datatag,verbose=True,params={'alpha' : 0.05, 'trend_magnitude' : None}):
