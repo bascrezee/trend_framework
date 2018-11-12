@@ -19,9 +19,25 @@ import copy
 import matplotlib.pyplot as plt
 import pprint
 
+def rvector_to_pydict(rvector):
+    '''Conversion of R vector (a Python representation of an R object, module rpy2) to a Python dictionary
+    
+    This solution has been taken from: https://stackoverflow.com/a/24153569/2164368
+    
+    Parameters
+    -----------
+    rvector :  rvector 
+        The rvector object to be converted
+        
+    Returns
+    --------
+    dict
+        A dictionary    
+    '''
+    return dict(zip(rvector.names,map(list,list(rvector))))
 
 class TrendLims1D:
-    def __init__(self,name,verbose=True,params={'alpha' : 0.05, 'trend_magnitude' : None}):
+    def __init__(self,name,verbose=True,params={'alpha' : 0.05, 'trend_magnitude' : None, 'n_mc' : 20000}):
         self.name = name
         self.verbose = verbose
         self.params = params
@@ -49,6 +65,8 @@ class TrendLims1D:
         artificial_data = pars_artificial['mean'] + pars_artificial['trend_magnitude']*decadal_time + pars_artificial['jump_magnitude']*jump_axis + pars_artificial['noise_magnitude']*noise_axis
 
         self.data_ts = pd.Series(data=artificial_data,index=timeline)
+        self.data_ts_copy = copy.deepcopy(self.data_ts)
+
     def load_file(self,filename):
         self.add_to_logbook("Loaded datafile {0}".format(filename))
         datafile = os.path.join('./test_data/',filename)
@@ -84,20 +102,17 @@ class TrendLims1D:
         '''
         self.data_ts = self.data_ts.resample(target_freq).mean()
         self.add_to_logbook('Resampled to {0} frequency'.format(target_freq))
-    
-    def get_trends(self):
-        self.trend_mktest()
-        self.trend_linear()
 
     def get_breakpoints(self):
+        data_ts_as_rvector = robjects.FloatVector(self.data_ts.values)
         rtrendpackage = rpackages.importr('trend')
-        snh_result = trend.snh_test(self.data_ts.values)
+        snh_result = rtrendpackage.snh_test(data_ts_as_rvector,m=self.params['n_mc'])
         snh_result = rvector_to_pydict(snh_result)
-        pettitt_result = trend.pettitt_test(self.data_ts.values)
+        pettitt_result = rtrendpackage.pettitt_test(data_ts_as_rvector)
         pettitt_result = rvector_to_pydict(pettitt_result)
-        br_result = trend.br_test(self.data_ts.values)
+        br_result = rtrendpackage.br_test(data_ts_as_rvector,m=self.params['n_mc'])
         br_result = rvector_to_pydict(br_result)
-        bu_result = trend.bu_test(self.data_ts.values)
+        bu_result = rtrendpackage.bu_test(data_ts_as_rvector,m=self.params['n_mc'])
         bu_result = rvector_to_pydict(bu_result)
         breakpoint_results = [snh_result,pettitt_result,br_result,bu_result]
 
@@ -107,11 +122,29 @@ class TrendLims1D:
             dict1 = OrderedDict()
             dict1.update({colname : test_result[colname][0] for colname in colnames})
             rows_list.append(dict1)
-        self.stats_summary['breakpoint_tests'] = pandas.DataFrame(rows_list)
+        self.stats_summary['breakpoint_tests'] = pd.DataFrame(rows_list)
+        # Following ATBD from KNMI ECA&D
+        n_rejects = (self.stats_summary['breakpoint_tests']['p.value'] <= 0.01).sum()
+        qc_classes = {
+            1 : 'Useful',
+            2 : 'Doubtful',
+            3 : 'Suspect'
+        }
+        if n_rejects<=1:
+            qc_class = 1
+        elif n_rejects==2:
+            qc_class = 2
+        elif n_rejects>2:
+            qc_class = 3
+        self.stats_summary['qc_class'] = {}
+        self.stats_summary['qc_class']['integer'] = qc_class
+        self.stats_summary['qc_class']['text'] = qc_classes[qc_class]
+        print("This timeseries is {0}".format(qc_classes[qc_class]))
 
     def plot(self,label=None):
         self.add_to_logbook("Creating a plot with label: {0}".format(label))
         self.data_ts.plot(label=label)
+        plt.legend()
         
     def trend_mktest(self):
         mk_input = self.data_ts.values
@@ -155,6 +188,7 @@ class TrendLims1D:
 
         theilsen_result = theilslopes(yaxis,x=xaxis,alpha=self.params['alpha'])
         slope,intercept,slope_low,slope_up = theilsen_result
+        self.fitted['trend_theilsen'] = xaxis*slope+intercept
         assert(slope_low <= slope <= slope_up) # Just to be safe, check this
         slope_sign = np.sign(slope)
         if not slope_low < 0.0 < slope_up:
@@ -175,6 +209,9 @@ class TrendLims1D:
         self.trend_mktest()
         self.trend_linear()
         self.trend_theilsen()
+
+    def remove_trend(self,fit_name=None):
+        self.data_ts = self.data_ts-self.fitted[fit_name]
 
     def do_residual_analysis(self,fit_name=None):
         '''
