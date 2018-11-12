@@ -1,4 +1,4 @@
-
+import pandas as pd
 import numpy as np
 import os
 import iris
@@ -10,53 +10,52 @@ import statsmodels.api as sm
 from statsmodels.tsa.stattools import acf
 from statsmodels.tsa.seasonal import seasonal_decompose
 
+# rpy2 imports
+import rpy2.robjects as robjects
+import rpy2.robjects.packages as rpackages
+from collections import OrderedDict
+
 import copy
 import matplotlib.pyplot as plt
 import pprint
 
 
-
 class TrendLims1D:
-    def __init__(self,name,datatag,verbose=True,params={'alpha' : 0.05, 'trend_magnitude' : None}):
+    def __init__(self,name,verbose=True,params={'alpha' : 0.05, 'trend_magnitude' : None}):
         self.name = name
-        self.datatag = datatag
         self.verbose = verbose
         self.params = params
         # Initialize some empty data
         self.stats_summary = {}
         self.logbook = []
-        self.__load_data__()
         self.fitted = {}
-    def __load_data__(self):
-        if self.datatag=='artificial':
-            self.add_to_logbook("Created an artificial timeseries")
-            # Create 100 years of artificial data
-            timeline = pd.date_range('1/1/1901', periods=100, freq='Y')
-            # Convert to time in floats, counting in decades from starting time
-            timediff = timeline-pd.datetime(1901,1,1)
-            decadal_time = timediff.total_seconds()/(3600.*24.*365.25*10) # Convert to units decades
-            
-            # Parameters for creating random test data
-            mean = 1
-            trend_magnitude = 0.03
-            noise_magnitude = 0.05
-            jump_magnitude = 0.05
-            jump_start = 20
-            jump_end = 40
-            
-            jump_axis = np.zeros_like(decadal_time)
-            jump_axis[20:40] = 1
-            noise_axis = np.random.uniform(-1,1,len(decadal_time))
-            
-            artificial_data = mean + trend_magnitude*decadal_time + jump_magnitude*jump_axis + noise_magnitude*noise_axis
-            self.data_ts = pd.Series(data=artificial_data,index=timeline)
-        elif os.path.splitext(self.datatag)[-1]=='.nc':
-            self.add_to_logbook("Loaded datafile {0}".format(self.datatag))
-            datafile = os.path.join('./test_data/',self.datatag)
-            # Load the data
-            self.data_cube = iris.load_cube(datafile)
-            self.data_ts = iris.pandas.as_series(self.data_cube)
-            self.data_ts_copy = copy.deepcopy(self.data_ts)
+    def create_artificial(self,*kwargs):
+        self.add_to_logbook("Created an artificial timeseries")
+        # Default parameters for creating random test data
+        pars_artificial = dict(periods = 100,freq = 'Y',mean = 1,trend_magnitude = 0.03,noise_magnitude = 0.05,jump_magnitude = 0.05,jump_start = 20,jump_length = 20)
+        # Update the default parameters with custom parameters
+        pars_artificial.update(*kwargs)
+
+        # Create 100 years of artificial data
+        timeline = pd.date_range('1/1/1901', periods=pars_artificial['periods'], freq='Y')
+        # Convert to time in floats, counting in decades from starting time
+        timediff = timeline-pd.datetime(1901,1,1)
+        decadal_time = timediff.total_seconds()/(3600.*24.*365.25*10) # Convert to units decades
+
+        jump_axis = np.zeros_like(decadal_time)
+        jump_axis[pars_artificial['jump_start']:pars_artificial['jump_start']+pars_artificial['jump_length']] = 1
+        noise_axis = np.random.uniform(-1,1,len(decadal_time))
+        
+        artificial_data = pars_artificial['mean'] + pars_artificial['trend_magnitude']*decadal_time + pars_artificial['jump_magnitude']*jump_axis + pars_artificial['noise_magnitude']*noise_axis
+
+        self.data_ts = pd.Series(data=artificial_data,index=timeline)
+    def load_file(self,filename):
+        self.add_to_logbook("Loaded datafile {0}".format(filename))
+        datafile = os.path.join('./test_data/',filename)
+        # Load the data
+        self.data_cube = iris.load_cube(datafile)
+        self.data_ts = iris.pandas.as_series(self.data_cube)
+        self.data_ts_copy = copy.deepcopy(self.data_ts)
     def reset(self):
         self.data_ts = self.data_ts_copy
         self.logbook = self.logbook[1:] # Only preserve first line, with info on loading            
@@ -91,8 +90,25 @@ class TrendLims1D:
         self.trend_linear()
 
     def get_breakpoints(self):
-        raise NotImplementedError
-        
+        rtrendpackage = rpackages.importr('trend')
+        snh_result = trend.snh_test(self.data_ts.values)
+        snh_result = rvector_to_pydict(snh_result)
+        pettitt_result = trend.pettitt_test(self.data_ts.values)
+        pettitt_result = rvector_to_pydict(pettitt_result)
+        br_result = trend.br_test(self.data_ts.values)
+        br_result = rvector_to_pydict(br_result)
+        bu_result = trend.bu_test(self.data_ts.values)
+        bu_result = rvector_to_pydict(bu_result)
+        breakpoint_results = [snh_result,pettitt_result,br_result,bu_result]
+
+        colnames = ['method','estimate','p.value']
+        rows_list = []
+        for test_result in breakpoint_results:
+            dict1 = OrderedDict()
+            dict1.update({colname : test_result[colname][0] for colname in colnames})
+            rows_list.append(dict1)
+        self.stats_summary['breakpoint_tests'] = pandas.DataFrame(rows_list)
+
     def plot(self,label=None):
         self.add_to_logbook("Creating a plot with label: {0}".format(label))
         self.data_ts.plot(label=label)
@@ -131,7 +147,6 @@ class TrendLims1D:
         #results.intercept
         #results.rvalue
 
-    # TODO
     def trend_theilsen(self):
         from scipy.stats.mstats import theilslopes
 
