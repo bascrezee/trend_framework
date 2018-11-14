@@ -15,6 +15,7 @@ The file _c3s_511_trends.py_ contains the class TrendLims1D in which different d
  - install the R packages like this:
  ```
  import rpy2.robjects.packages as rpackages
+ import rpy2.robjects as robjects
 
 
  # import R's utility package
