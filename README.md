@@ -12,8 +12,11 @@ The file _c3s_511_trends.py_ contains the class TrendLims1D in which different d
  - conda install jupyter
  - conda install statsmodels
  - (Install packages from within an R terminal -> probably not needed )
- - install packages like this:
+ - install the R packages like this:
  ```
+ import rpy2.robjects.packages as rpackages
+
+
  # import R's utility package
  utils = rpackages.importr('utils')
 
