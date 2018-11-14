@@ -76,7 +76,7 @@ class TrendLims1D:
         self.data_ts_copy = copy.deepcopy(self.data_ts)
     def reset(self):
         self.data_ts = self.data_ts_copy
-        self.logbook = self.logbook[1:] # Only preserve first line, with info on loading            
+        self.logbook = self.logbook[1:] # Only preserve first line, with info on loading
     def subset(self,timeslice):
         '''
         Subsetting over time.
@@ -85,7 +85,7 @@ class TrendLims1D:
         self.add_to_logbook('Subsetted to timeperiod {0}-{1}'.format(timeslice.start,timeslice.stop))
     
     def decompose_seasonal(self,inplace=False,freq=None):
-        results = seasonal_decompose(self.data_ts,model='additive',freq=freq)        
+        results = seasonal_decompose(self.data_ts,model='additive',freq=freq)
         signal = results.trend
         seasonal = results.seasonal
         residue = results.resid
@@ -128,7 +128,11 @@ class TrendLims1D:
             dict1 = OrderedDict()
             dict1.update({colname : test_result[colname][0] for colname in colnames})
             rows_list.append(dict1)
-        self.stats_summary['breakpoint_tests'] = pd.DataFrame(rows_list)
+        # Create a dataframe to save breakpoint test results
+        df_breakpoints = pd.DataFrame(rows_list)
+        # Add additional column, with formatted breakpoints
+        df_breakpoints['estimate_formatted'] = self.data_ts.index[df_breakpoints['estimate']]
+        self.stats_summary['breakpoint_tests'] = df_breakpoints
         # Following ATBD from KNMI ECA&D
         n_rejects = (self.stats_summary['breakpoint_tests']['p.value'] <= 0.01).sum()
         qc_classes = {
