@@ -19,6 +19,14 @@ import copy
 import matplotlib.pyplot as plt
 import pprint
 
+# A dictionary for converting long names to short names
+breakpoint_test_names = {
+    'Standard Normal Homogeneity Test (SNHT)' : 'SNHT',
+    "Pettitt's test for single change-point detection" : 'Pettitt',
+    'Buishand range test' : 'Buishand R',
+    'Buishand U test' : 'Buishand U',
+}
+
 def rvector_to_pydict(rvector):
     '''Conversion of R vector (a Python representation of an R object, module rpy2) to a Python dictionary
     
@@ -155,7 +163,24 @@ class TrendLims1D:
         self.add_to_logbook("Creating a plot with label: {0}".format(label))
         self.data_ts.plot(label=label)
         plt.legend()
+
+    def plot_breakpoints(self):
+        xvals = self.stats_summary['breakpoint_tests']['estimate_formatted'].values
+        pvals = self.stats_summary['breakpoint_tests']['p.value'].values
+        testnames = [breakpoint_test_names[testname] for testname in self.stats_summary['breakpoint_tests']['method']]
         
+        y_base = plt.ylim()[0]
+        y_range = np.abs(plt.ylim()[1]-plt.ylim()[0])
+        y_offset = 0.02*y_range # 2% of the y axis range
+        
+        yvals = [y_base+i*y_offset for i in range(len(xvals))]
+        markers=['x','+','.','*']
+        for xval,yval,marker,testname,pval in zip(xvals,yvals,markers,testnames,pvals):
+            if pval < 0.01:
+                plt.scatter(xval,yval,marker=marker,label=testname)
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.25),
+                  ncol=3, fancybox=True, shadow=True)
+
     def trend_mktest(self):
         mk_input = self.data_ts.values
         mk_input = mk_input[~np.isnan(mk_input)]
@@ -213,7 +238,6 @@ class TrendLims1D:
         results_dict['slope_up'] = slope_up*(365.25*10) # From /day to /decade
         self.stats_summary['trend_theilsen'] = results_dict
         self.add_to_logbook('Calculated Theil-Sen slope')
-        
         
     def do_trends(self):
         self.trend_mktest()
