@@ -103,6 +103,12 @@ class TrendLims1D:
         self.data_ts = self.data_ts.resample(target_freq).mean()
         self.add_to_logbook('Resampled to {0} frequency'.format(target_freq))
 
+    def calc_absdifference(self):
+        ''' Calculates the lag 1 absolute difference of the timeseries
+        '''
+        self.data_ts = self.data_ts.diff().abs()
+        self.data_ts = self.data_ts[slice(1,None)] # Cut the first value since it is NaN
+
     def get_breakpoints(self):
         data_ts_as_rvector = robjects.FloatVector(self.data_ts.values)
         rtrendpackage = rpackages.importr('trend')
