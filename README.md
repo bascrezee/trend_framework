@@ -39,6 +39,8 @@ The file _c3s_511_trends.py_ contains the class TrendLims1D in which different d
  ```
 
 # Usefull material
+- R-package trend documentation: https://cran.r-project.org/web/packages/trend/vignettes/trend.pdf
+- R-package iki.dataclim documentation: https://cran.r-project.org/web/packages/iki.dataclim/iki.dataclim.pdf
 - Testing the assumptions of linear regression: http://people.duke.edu/~rnau/testing.htm
 - Understanding Q-Q Plots: https://data.library.virginia.edu/understanding-q-q-plots/
 - Mann-Kendall test  https://vsp.pnnl.gov/help/vsample/design_trend_mann_kendall.htm
