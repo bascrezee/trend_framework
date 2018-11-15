@@ -77,9 +77,8 @@ class TrendLims1D:
 
     def load_file(self,filename):
         self.add_to_logbook("Loaded datafile {0}".format(filename))
-        datafile = os.path.join('./test_data/',filename)
         # Load the data
-        self.data_cube = iris.load_cube(datafile)
+        self.data_cube = iris.load_cube(filename)
         self.data_ts = iris.pandas.as_series(self.data_cube)
         self.data_ts_copy = copy.deepcopy(self.data_ts)
     def reset(self):
