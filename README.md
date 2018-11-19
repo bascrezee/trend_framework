@@ -37,6 +37,7 @@ The file _c3s_511_trends.py_ contains the class TrendLims1D in which different d
  ```
 
 # Usefull material
+- ATBD document from ECA&D: https://www.ecad.eu/documents/atbd.pdf
 - R-package trend documentation: https://cran.r-project.org/web/packages/trend/vignettes/trend.pdf
 - R-package iki.dataclim documentation: https://cran.r-project.org/web/packages/iki.dataclim/iki.dataclim.pdf
 - Testing the assumptions of linear regression: http://people.duke.edu/~rnau/testing.htm
