@@ -18,7 +18,7 @@ The file _c3s_511_trends.py_ contains the class TrendLims1D in which different d
       - climdex.pcic
     - trend
     
- - alternatively from Python (not recommended):
+ - alternatively from Python while the conda environment is activated (not recommended):
  ```
  import rpy2.robjects.packages as rpackages
  import rpy2.robjects as robjects
