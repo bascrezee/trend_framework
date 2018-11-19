@@ -44,6 +44,24 @@ def rvector_to_pydict(rvector):
     '''
     return dict(zip(rvector.names,map(list,list(rvector))))
 
+
+def get_qc_class_and_string(pd_df):
+    # Following ATBD from KNMI ECA&D
+    n_rejects = (pd_df['p.value'] <= 0.01).sum()
+    qc_classes = {
+        1 : 'Useful',
+        2 : 'Doubtful',
+        3 : 'Suspect'
+    }
+    if n_rejects<=1:
+        qc_class = 1
+    elif n_rejects==2:
+        qc_class = 2
+    elif n_rejects>2:
+        qc_class = 3
+    return qc_class,qc_classes[qc_class]
+
+
 class TrendLims1D:
     def __init__(self,name,verbose=True,params={'alpha' : 0.05, 'trend_magnitude' : None, 'n_mc' : 20000}):
         self.name = name
@@ -110,14 +128,17 @@ class TrendLims1D:
         self.data_ts = self.data_ts.resample(target_freq).mean()
         self.add_to_logbook('Resampled to {0} frequency'.format(target_freq))
 
-    def calc_absdifference(self):
-        ''' Calculates the lag 1 absolute difference of the timeseries
-        '''
-        self.data_ts = self.data_ts.diff().abs()
-        self.data_ts = self.data_ts[slice(1,None)] # Cut the first value since it is NaN
+    def get_breakpoints(self,resamplefreq='M'):
+        self.breakpoints_values = self.__get_breakpoints__(self.data_ts,resamplefreq=resamplefreq)
+        absdiff = self.data_ts.diff().abs()
+        absdiff = absdiff[slice(1,None)] # Cut the first value since it is NaN
+        self.breakpoints_absdiffvalues = self.__get_breakpoints__(absdiff,resamplefreq=resamplefreq)
 
-    def get_breakpoints(self):
-        data_ts_as_rvector = robjects.FloatVector(self.data_ts.values)
+    def __get_breakpoints__(self,data_ts,resamplefreq=None):
+        # By default on Monthly data
+        data_ts = data_ts.resample(resamplefreq).mean()
+        datavalues = data_ts.values
+        data_ts_as_rvector = robjects.FloatVector(datavalues)
         rtrendpackage = rpackages.importr('trend')
         snh_result = rtrendpackage.snh_test(data_ts_as_rvector,m=self.params['n_mc'])
         snh_result = rvector_to_pydict(snh_result)
@@ -138,25 +159,17 @@ class TrendLims1D:
         # Create a dataframe to save breakpoint test results
         df_breakpoints = pd.DataFrame(rows_list)
         # Add additional column, with formatted breakpoints
-        df_breakpoints['estimate_formatted'] = self.data_ts.index[df_breakpoints['estimate']]
-        self.stats_summary['breakpoint_tests'] = df_breakpoints
-        # Following ATBD from KNMI ECA&D
-        n_rejects = (self.stats_summary['breakpoint_tests']['p.value'] <= 0.01).sum()
-        qc_classes = {
-            1 : 'Useful',
-            2 : 'Doubtful',
-            3 : 'Suspect'
-        }
-        if n_rejects<=1:
-            qc_class = 1
-        elif n_rejects==2:
-            qc_class = 2
-        elif n_rejects>2:
-            qc_class = 3
-        self.stats_summary['qc_class'] = {}
-        self.stats_summary['qc_class']['integer'] = qc_class
-        self.stats_summary['qc_class']['text'] = qc_classes[qc_class]
-        print("This timeseries is {0}".format(qc_classes[qc_class]))
+        df_breakpoints['estimate_formatted'] = data_ts.index[df_breakpoints['estimate']]
+        return df_breakpoints
+
+    def evaluate_breakpoints(self):
+        # Check for each PD dataframe n_rejects
+        qc_class_values,qc_string_values = get_qc_class_and_string(self.breakpoints_values)
+        qc_class_absdiffvalues,qc_string_absdiffvalues = get_qc_class_and_string(self.breakpoints_absdiffvalues)
+
+        # Print for each PD dataframe n_rejects
+        print("Values: {0}".format(qc_string_values))
+        print("Absolute differences: {0}".format(qc_string_absdiffvalues))
 
     def plot(self,label=None):
         self.add_to_logbook("Creating a plot with label: {0}".format(label))
@@ -164,21 +177,22 @@ class TrendLims1D:
         plt.legend()
 
     def plot_breakpoints(self):
-        xvals = self.stats_summary['breakpoint_tests']['estimate_formatted'].values
-        pvals = self.stats_summary['breakpoint_tests']['p.value'].values
-        testnames = [breakpoint_test_names[testname] for testname in self.stats_summary['breakpoint_tests']['method']]
-        
-        y_base = plt.ylim()[0]
-        y_range = np.abs(plt.ylim()[1]-plt.ylim()[0])
-        y_offset = 0.02*y_range # 2% of the y axis range
-        
-        yvals = [y_base+i*y_offset for i in range(len(xvals))]
-        markers=['x','+','.','*']
-        for xval,yval,marker,testname,pval in zip(xvals,yvals,markers,testnames,pvals):
-            if pval < 0.01:
-                plt.scatter(xval,yval,marker=marker,label=testname)
-        plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.25),
-                  ncol=3, fancybox=True, shadow=True)
+        for bp_df,bp_color,shortname in zip([self.breakpoints_values,self.breakpoints_absdiffvalues],['r','b'],['on values','on absdiff']):
+            xvals = bp_df['estimate_formatted'].values
+            pvals = bp_df['p.value'].values
+            testnames = [breakpoint_test_names[testname] for testname in bp_df['method']]
+            y_base = plt.ylim()[0]
+            y_range = np.abs(plt.ylim()[1]-plt.ylim()[0])
+            y_offset = 0.02*y_range # 2% of the y axis range
+            
+            yvals = [y_base+i*y_offset for i in range(len(xvals))]
+            markers = ['x','+','.','*']
+            for xval,yval,marker,testname,pval in zip(xvals,yvals,markers,testnames,pvals):
+                testname = testname+' '+shortname
+                if pval < 0.01:
+                    plt.scatter(xval,yval,marker=marker,label=testname,color=bp_color)
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.25),
+                      ncol=3, fancybox=True, shadow=True)
 
     def trend_mktest(self):
         mk_input = self.data_ts.values
