@@ -11,19 +11,17 @@ The file _c3s_511_trends.py_ contains the class TrendLims1D in which different d
  - conda install -c r rpy2
  - conda install jupyter
  - conda install statsmodels
- - install the following R packages from an R terminal opened while the conda environment is activated: 
+ - install the following R packages from an R terminal opened while the conda environment is activated (recommended):
     - iki.dataclim
       - lubridate
       - zoo
       - climdex.pcic
     - trend
-   
- 
- like this:
+    
+ - alternatively from Python (not recommended):
  ```
  import rpy2.robjects.packages as rpackages
  import rpy2.robjects as robjects
-
 
  # import R's utility package
  utils = rpackages.importr('utils')
@@ -31,7 +29,7 @@ The file _c3s_511_trends.py_ contains the class TrendLims1D in which different d
  # select a mirror for R packages
  utils.chooseCRANmirror(ind=1) # select the first mirror in the list
 
- utils.install_packages(robjects.StrVector('trend'))
+ utils.install_packages('trend')
  if rpackages.isinstalled('trend'):
     print("Succesfully installed the 'trend' R package from CRAN")
  else:
