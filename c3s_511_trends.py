@@ -127,7 +127,7 @@ class TrendLims1D:
         self.data_ts = self.data_ts.resample(target_freq).mean()
         self.add_to_logbook('Resampled to {0} frequency'.format(target_freq))
 
-    def breakpoint_recipe_a(self,resamplefreq='Y'):
+    def breakpoint_recipe_values(self,resamplefreq='Y'):
         '''
         # This function applies 4 homogeneity tests to yearly (by default) means of the data, similar to most climate variables in the ATBD from ECA&D
         '''
@@ -136,14 +136,14 @@ class TrendLims1D:
         self.qc_status_int,self.qc_status=get_qc_class_and_string(self.breakpoints)
         print("This timeseries is marked as {0} (value based)".format(self.qc_status))
 
-    def breakpoint_recipe_b(self,resamplefreq='Y'):
+    def breakpoint_recipe_differences(self,resamplefreq='Y'):
         '''
         # This function applies 4 homogeneity tests to yearly (by default) means of day-to-day absolute differences of the data, similar to one of the climate variables in the ATBD from ECA&D
         '''
         absdiff = self.data_ts.diff().abs()
         absdiff = absdiff[slice(1,None)] # Cut the first value since it is NaN
-        absdiff = absdiff.resample(resamplefreq).mean()
-        self.breakpoints = self.test_breakpoint(absdiff,['snh','pet','bhr','von'])
+        self.differences = absdiff.resample(resamplefreq).mean()
+        self.breakpoints = self.test_breakpoint(self.differences,['snh','pet','bhr','von'])
         self.qc_status_int,self.qc_status=get_qc_class_and_string(self.breakpoints)
         print("This timeseries is marked as {0} (variance based)".format(self.qc_status))
 
@@ -228,9 +228,12 @@ class TrendLims1D:
         print("Values: {0}".format(qc_string_values))
         print("Absolute differences: {0}".format(qc_string_absdiffvalues))
 
-    def plot(self,label=None):
+    def plot(self,label=None,mode='values'):
         self.add_to_logbook("Creating a plot with label: {0}".format(label))
-        self.data_ts.plot(label=label)
+        if mode=='values':
+            self.data_ts.plot(label=label)
+        elif mode=='differences':
+            self.differences.plot(label=label)
         plt.legend()
 
     def plot_breakpoints(self):
