@@ -44,7 +44,6 @@ def rvector_to_pydict(rvector):
     '''
     return dict(zip(rvector.names,map(list,list(rvector))))
 
-
 def get_qc_class_and_string(pd_df):
     # Following ATBD from KNMI ECA&D
     n_rejects = (pd_df['p.value'] <= 0.01).sum()
@@ -128,11 +127,69 @@ class TrendLims1D:
         self.data_ts = self.data_ts.resample(target_freq).mean()
         self.add_to_logbook('Resampled to {0} frequency'.format(target_freq))
 
-    def get_breakpoints(self,resamplefreq='M'):
-        self.breakpoints_values = self.__get_breakpoints__(self.data_ts,resamplefreq=resamplefreq)
+    def breakpoint_recipe_a(self,resamplefreq='Y'):
+        '''
+        # This function applies 4 homogeneity tests to yearly (by default) means of the data, similar to most climate variables in the ATBD from ECA&D
+        '''
+        breakpoint_input = self.data_ts.resample(resamplefreq).mean()
+        self.breakpoints = self.test_breakpoint(breakpoint_input,['snh','pet','bhr','von'])
+        self.qc_status_int,self.qc_status=get_qc_class_and_string(self.breakpoints)
+        print("This timeseries is marked as {0} (value based)".format(self.qc_status))
+
+    def breakpoint_recipe_b(self,resamplefreq='Y'):
+        '''
+        # This function applies 4 homogeneity tests to yearly (by default) means of day-to-day absolute differences of the data, similar to one of the climate variables in the ATBD from ECA&D
+        '''
         absdiff = self.data_ts.diff().abs()
         absdiff = absdiff[slice(1,None)] # Cut the first value since it is NaN
-        self.breakpoints_absdiffvalues = self.__get_breakpoints__(absdiff,resamplefreq=resamplefreq)
+        absdiff = absdiff.resample(resamplefreq).mean()
+        self.breakpoints = self.test_breakpoint(absdiff,['snh','pet','bhr','von'])
+        self.qc_status_int,self.qc_status=get_qc_class_and_string(self.breakpoints)
+        print("This timeseries is marked as {0} (variance based)".format(self.qc_status))
+
+    def test_breakpoint(self,input_ts,testnames):
+        values = input_ts.values
+        values_as_rvector = robjects.FloatVector(values)
+        rtrendpackage = rpackages.importr('trend') # This should be moved somewhere else, when doing many calls to this function
+        breakpoint_results = []
+        if 'snh' in testnames:
+            test_result = rtrendpackage.snh_test(values_as_rvector,m=self.params['n_mc'])
+            test_result = rvector_to_pydict(test_result)
+            test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
+            breakpoint_results.append(test_result)
+        if 'pet' in testnames:
+            test_result = rtrendpackage.pettitt_test(values_as_rvector)
+            test_result = rvector_to_pydict(test_result)
+            test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
+            breakpoint_results.append(test_result)
+        if 'bhr' in testnames:
+            test_result = rtrendpackage.br_test(values_as_rvector,m=self.params['n_mc'])
+            test_result = rvector_to_pydict(test_result)
+            test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
+            breakpoint_results.append(test_result)
+        if 'bu' in testnames:
+            test_result = rtrendpackage.bu_test(values_as_rvector,m=self.params['n_mc'])
+            test_result = rvector_to_pydict(test_result)
+            test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
+            breakpoint_results.append(test_result)
+        if 'von' in testnames:
+            test_result = rtrendpackage.bartels_test(values_as_rvector)
+            von_result = rvector_to_pydict(test_result)
+            von_result['estimate'] = [None] # The list mimics the structure of the R output from the tests.
+            von_result['estimate_formatted'] = [None] # The list mimics the structure of the R output from the tests.
+            breakpoint_results.append(von_result)
+        # Restructure test results to pandas dataframe
+        colnames = ['method','estimate','estimate_formatted','p.value']
+        rows_list = []
+        for breakpoint_row in breakpoint_results:
+            dict1 = OrderedDict()
+            dict1.update({colname : breakpoint_row[colname][0] for colname in colnames})
+            rows_list.append(dict1)
+        # Create a dataframe to save breakpoint test results
+        df_breakpoints = pd.DataFrame(rows_list)
+        # Add additional column, with formatted breakpoints
+        #df_breakpoints['estimate_formatted'] = input_ts.index[df_breakpoints['estimate']]
+        return df_breakpoints
 
     def __get_breakpoints__(self,data_ts,resamplefreq=None):
         # By default on Monthly data
@@ -264,8 +321,15 @@ class TrendLims1D:
         '''
         # The layout of this plot follows an example by Christoph Frei in his course 'Analysis of Weather
         # and Climate Data' at ETH Zurich
+        # 
+        # If no fit_name is provided, the residues are calculated as the timeseries minus the mean value of the timeseries.
         '''
-        res = self.data_ts.values-self.fitted[fit_name]
+        if fit_name==None:
+            res = self.data_ts.values-self.data_ts.values.mean()
+            tukey_anscombe_xaxis = self.data_ts.index
+        else:
+            res = self.data_ts.values-self.fitted[fit_name]
+            tukey_anscombe_xaxis = self.fitted[fit_name]
 
         f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2,squeeze=False,constrained_layout=True,figsize=(8,6))
 
@@ -277,7 +341,7 @@ class TrendLims1D:
         ax2.set_title('Residual histogram')
         ax2.set_ylabel('# of samples')
         # testing homoscedasticity
-        ax3.scatter(self.fitted[fit_name],res)
+        ax3.scatter(tukey_anscombe_xaxis,res)
         ax3.set_title('Tukey-Anscombe')
         ax3.set_ylabel('residues')
         ax3.set_xlabel('fitted')
