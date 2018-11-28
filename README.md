@@ -7,7 +7,7 @@ In the first stage, the diagnostics will be tested on one dimensional data (eith
 The file _c3s_511_trends.py_ contains the class TrendLims1D in which different diagnostics are implemented, and more will be implemented in the future. The file _framework.ipynb_ (iPython Notebook) contains several examples and can be viewed on Github.
 
 # Installation for breakpoint detection
- - Follow instructions on installing ESMValTool2  (except, put explicitly, Python 3.6, at least from ETH)
+ - Create the environment needed for ESMValTool2 as described [here](https://esmvaltool.readthedocs.io/en/version2_development/user_guide2/index.html#installing-esmvaltool) with the Python 3 environment (note for ETH users: replace `python=3` with `python=3.6`)
  - conda install -c r rpy2
  - conda install jupyter
  - conda install statsmodels
