@@ -71,6 +71,9 @@ class TrendLims1D:
         self.logbook = []
         self.fitted = {}
     def create_artificial(self,*kwargs):
+        '''
+        Example usage: create_artificial(periods = 100,freq = 'Y',mean = 1,trend_magnitude = 0.03,noise_magnitude = 0.05,jump_magnitude = 0.05,jump_start = 20,jump_length = 20)
+        '''
         self.add_to_logbook("Created an artificial timeseries")
         # Default parameters for creating random test data
         pars_artificial = dict(periods = 100,freq = 'Y',mean = 1,trend_magnitude = 0.03,noise_magnitude = 0.05,jump_magnitude = 0.05,jump_start = 20,jump_length = 20)
@@ -260,13 +263,15 @@ class TrendLims1D:
         trend,h,p,z = self.mk_test(mk_input,alpha=self.params['alpha'])
         # Store results in stats_summary
         results = {}
-        results['trend']=trend
+        results['sign']=trend
+        results['slope']=None
         results['h']=h
-        results['p']=p
+        results['pvalue']=p
         results['z']=z
-        self.stats_summary['trend_mannkendall'] = results
         self.add_to_logbook('Calculated Mann-Kendall test')
-        
+        results['method']='mk'
+        return results
+
     def trend_linear(self):
         xaxis = self.data_ts.index.to_julian_date()
         yaxis = self.data_ts.values
@@ -275,18 +280,16 @@ class TrendLims1D:
         results_dict = {}
         results_dict['slope']=results.slope*(365.25*10) # From /day to /decade
         if results.pvalue <= self.params['alpha']:
-            results_dict['trend'] = int(np.sign(results.slope))
+            results_dict['sign'] = int(np.sign(results.slope))
         else:
-            results_dict['trend'] = int(0)
+            results_dict['sign'] = int(0)
         results_dict['pvalue']=results.pvalue
         results_dict['stderr']=results.stderr*(365.25*10)
         results_dict['slope_low'] = results_dict['slope']-results_dict['stderr']
         results_dict['slope_up'] = results_dict['slope']+results_dict['stderr']
-        self.stats_summary['trend_linear'] = results_dict
         self.add_to_logbook('Calculated linear trend test')
-        # We are not interested in intercept and rvalue, leave them out for now
-        #results.intercept
-        #results.rvalue
+        results_dict['method']='linear'
+        return results_dict
 
     def trend_theilsen(self):
         from scipy.stats.mstats import theilslopes
@@ -300,22 +303,45 @@ class TrendLims1D:
         assert(slope_low <= slope <= slope_up) # Just to be safe, check this
         slope_sign = np.sign(slope)
         if not slope_low < 0.0 < slope_up:
-            trend = int(np.sign(slope))
+            sign = int(np.sign(slope))
         else:
-            trend = int(0)
+            sign = int(0)
         
         results_dict = {}
-        results_dict['trend'] = trend
+        results_dict['sign'] = sign
         results_dict['slope'] = slope*(365.25*10) # From /day to /decade
         results_dict['slope_low'] = slope_low*(365.25*10) # From /day to /decade
         results_dict['slope_up'] = slope_up*(365.25*10) # From /day to /decade
-        self.stats_summary['trend_theilsen'] = results_dict
+        # Add a sign to Theilsen
+
+
         self.add_to_logbook('Calculated Theil-Sen slope')
+        results_dict['method']='theilsen'
+        results_dict['pvalue']=None # Trend Theilsen has no pvalue
+        return results_dict
         
-    def do_trends(self):
-        self.trend_mktest()
-        self.trend_linear()
-        self.trend_theilsen()
+    def do_trends(self,trend_names=['mk','linear','theilsen']):
+        trend_results = []
+        if 'mk' in trend_names:
+            mk_result = self.trend_mktest()
+            trend_results.append(mk_result)
+        if 'linear' in trend_names:
+            linear_result = self.trend_linear()
+            trend_results.append(linear_result)
+        if 'theilsen' in trend_names:
+            theilsen_result = self.trend_theilsen()
+            trend_results.append(theilsen_result)
+        # Restructure test results to pandas dataframe
+        colnames = ['method','sign','slope','pvalue']
+        rows_list = []
+        for trend_row in trend_results:
+            dict1 = OrderedDict()
+            dict1.update({colname : trend_row[colname] for colname in colnames})
+            rows_list.append(dict1)
+        # Create a dataframe to save breakpoint test results
+        df_trends = pd.DataFrame(rows_list)
+        # Add additional column, with formatted breakpoints
+        self.trends = df_trends
 
     def remove_trend(self,fit_name=None):
         self.data_ts = self.data_ts-self.fitted[fit_name]
@@ -466,12 +492,15 @@ class TrendLims1D:
         else:
             trend = 0
         return trend, h, p, z
+
     def add_to_logbook(self,logmessage):
         if self.verbose:
             print(logmessage)
         self.logbook.append(logmessage+'\n')
+
     def print_logbook(self):
         print('\n'.join(self.logbook))
+
     def print_stats(self):
         pprint.pprint(self.stats_summary)
         
