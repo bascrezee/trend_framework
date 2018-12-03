@@ -4,10 +4,12 @@ This is a private repository intended for development of the 'trends and their l
 
 In the first stage, the diagnostics will be tested on one dimensional data (either station data, or a single gridpoint extracted from a gridded dataset). This allows for the development of robust diagnostics that can later be applied to gridded data. The folder test_data contains a file with 2m temperature from the station 'De Bilt' in the Netherlands. This timeseries is relatively long and is homogenized.
 
-The file _c3s_511_trends.py_ contains the class TrendLims1D in which different diagnostics are implemented, and more will be implemented in the future. The file _framework.ipynb_ (iPython Notebook) contains several examples and can be viewed on Github.
+The file _c3s_511_trends.py_ contains the class TrendLims1D in which different diagnostics are implemented, and more will be implemented in the future. The files with the extension `.ipynb` are Jupyter notebook files and serve as examples for using the framework. For users who have no experience with the Jupyter notebook, it is recommended to read sections 1.1 and 3 from [this tutorial](https://jupyter-notebook-beginner-guide.readthedocs.io/en/latest/what_is_jupyter.html#notebook-document).
 
-# Installation for breakpoint detection
- - Follow instructions on installing ESMValTool2  (except, put explicitly, Python 3.6, at least from ETH)
+# Installation
+
+## Creating the environment
+ - Create the environment needed for ESMValTool2 as described [here](https://esmvaltool.readthedocs.io/en/version2_development/user_guide2/index.html#installing-esmvaltool) with the Python 3 environment (note for ETH users: replace `python=3` with `python=3.6`)
  - conda install -c r rpy2
  - conda install jupyter
  - conda install statsmodels
@@ -35,6 +37,8 @@ The file _c3s_511_trends.py_ contains the class TrendLims1D in which different d
  else:
     print("Warning: installation of the 'trend' R package was not succesfull") 
  ```
+## Clone this repository
+Navigate to the directory where you want the software to be installed and clone this repository. The Jupyter notebook is started with the command `jupyter-notebook`.
 
 # Usefull material
 - ATBD document from ECA&D: https://www.ecad.eu/documents/atbd.pdf
