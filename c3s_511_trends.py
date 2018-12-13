@@ -107,10 +107,9 @@ class TrendLims1D:
         if var_name is not None:
             variable_constraint = iris.Constraint(cube_func=(lambda c: c.var_name == var_name))
             self.data_cube = iris.load(filename, constraints=variable_constraint)[0]
-            if self.data_cube.ndim==3:
-                self.data_cube = self.data_cube[:,0,0]
         else:
             self.data_cube = iris.load_cube(filename)
+        self.data_cube = iris.util.squeeze(self.data_cube)
         self.data_ts = iris.pandas.as_series(self.data_cube)
         self.data_ts_copy = copy.deepcopy(self.data_ts)
     def reset(self):
