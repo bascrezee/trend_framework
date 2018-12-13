@@ -95,10 +95,22 @@ class TrendLims1D:
         self.data_ts = pd.Series(data=artificial_data,index=timeline)
         self.data_ts_copy = copy.deepcopy(self.data_ts)
 
-    def load_file(self,filename):
+    def load_file(self,filename,var_name=None):
+        ''' Loading a netCDF file. If the file has more than one variable, the variable name needs to be given 
+        
+            Input:
+                filename:  the filename
+                var_name:  the variable name
+        '''
         self.add_to_logbook("Loaded datafile {0}".format(filename))
         # Load the data
-        self.data_cube = iris.load_cube(filename)
+        if var_name is not None:
+            variable_constraint = iris.Constraint(cube_func=(lambda c: c.var_name == var_name))
+            self.data_cube = iris.load(filename, constraints=variable_constraint)[0]
+            if self.data_cube.ndim==3:
+                self.data_cube = self.data_cube[:,0,0]
+        else:
+            self.data_cube = iris.load_cube(filename)
         self.data_ts = iris.pandas.as_series(self.data_cube)
         self.data_ts_copy = copy.deepcopy(self.data_ts)
     def reset(self):
