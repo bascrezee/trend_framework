@@ -13,6 +13,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 # rpy2 imports
 import rpy2.robjects as robjects
 import rpy2.robjects.packages as rpackages
+import rpy2.rinterface
 from collections import OrderedDict
 
 import copy
@@ -42,7 +43,17 @@ def rvector_to_pydict(rvector):
     dict
         A dictionary    
     '''
-    return dict(zip(rvector.names,map(list,list(rvector))))
+    try:
+        result = dict(zip(rvector.names,map(list,list(rvector))))
+    except TypeError:
+        print("Warning: setting RNULLType to FloatVector with length zero before conversion to Python dictionary")
+        # probably there is a RNULLType in the object, which can not be converted
+        # as a workaround, convert it to an empty FloatVector
+        for i in range(len(rvector)):
+            if type(rvector[i])==rpy2.rinterface.RNULLType:
+                rvector[i]=robjects.FloatVector([])
+        result = dict(zip(rvector.names,map(list,list(rvector))))
+    return result
 
 def get_qc_class_and_string(pd_df):
     # Following ATBD from KNMI ECA&D
@@ -141,27 +152,33 @@ class TrendLims1D:
         self.data_ts = self.data_ts.resample(target_freq).mean()
         self.add_to_logbook('Resampled to {0} frequency'.format(target_freq))
 
-    def breakpoint_recipe_values(self,resamplefreq='Y'):
+    def breakpoint_recipe_values(self,resamplefreq='Y',rpackagename='trend'):
         '''
         # This function applies 4 homogeneity tests to yearly (by default) means of the data, similar to most climate variables in the ATBD from ECA&D
         '''
         breakpoint_input = self.data_ts.resample(resamplefreq).mean()
-        self.breakpoints = self.test_breakpoint(breakpoint_input,['snh','pet','bhr','von'])
-        self.qc_status_int,self.qc_status=get_qc_class_and_string(self.breakpoints)
-        print("This timeseries is marked as {0} (value based)".format(self.qc_status))
+        if rpackagename=='trend':
+            self.breakpoints = self.test_breakpoint_rtrend(breakpoint_input,['snh','pet','bhr','von'])
+            self.qc_status_int,self.qc_status=get_qc_class_and_string(self.breakpoints)
+            print("This timeseries is marked as {0} (value based)".format(self.qc_status))
+        elif rpackagename=='iki.dataclim':
+            self.breakpoints = self.test_breakpoint_rikidataclim(breakpoint_input,['snh','pet','bhr','von'])
 
-    def breakpoint_recipe_differences(self,resamplefreq='Y'):
+    def breakpoint_recipe_differences(self,resamplefreq='Y',rpackagename='trend'):
         '''
         # This function applies 4 homogeneity tests to yearly (by default) means of day-to-day absolute differences of the data, similar to one of the climate variables in the ATBD from ECA&D
         '''
         absdiff = self.data_ts.diff().abs()
         absdiff = absdiff[slice(1,None)] # Cut the first value since it is NaN
         self.differences = absdiff.resample(resamplefreq).mean()
-        self.breakpoints = self.test_breakpoint(self.differences,['snh','pet','bhr','von'])
-        self.qc_status_int,self.qc_status=get_qc_class_and_string(self.breakpoints)
-        print("This timeseries is marked as {0} (variance based)".format(self.qc_status))
+        if rpackagename=='trend':  
+            self.breakpoints = self.test_breakpoint_rtrend(self.differences,['snh','pet','bhr','von'])
+            self.qc_status_int,self.qc_status=get_qc_class_and_string(self.breakpoints)
+            print("This timeseries is marked as {0} (variance based)".format(self.qc_status))
+        elif rpackagename=='iki.dataclim':
+            self.breakpoints = self.test_breakpoint_rikidataclim(self.differences,['snh','pet','bhr','von'])
 
-    def test_breakpoint(self,input_ts,testnames):
+    def test_breakpoint_rtrend(self,input_ts,testnames):
         values = input_ts.values
         values_as_rvector = robjects.FloatVector(values)
         rtrendpackage = rpackages.importr('trend') # This should be moved somewhere else, when doing many calls to this function
@@ -204,6 +221,51 @@ class TrendLims1D:
         # Add additional column, with formatted breakpoints
         #df_breakpoints['estimate_formatted'] = input_ts.index[df_breakpoints['estimate']]
         return df_breakpoints
+
+    def test_breakpoint_rikidataclim(self,input_ts,testnames):
+        values = input_ts.values
+        values_as_rvector = robjects.FloatVector(values)
+        rtrendpackage = rpackages.importr('iki.dataclim') # This should be moved somewhere else, when doing many calls to this function
+        breakpoint_results = []
+        if 'snh' in testnames:
+            test_result = rtrendpackage.SNHtest(values_as_rvector)
+            test_result = rvector_to_pydict(test_result)
+            test_result['method']='SNH Test'
+#            test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
+            breakpoint_results.append(test_result)
+        if 'pet' in testnames:
+            test_result = rtrendpackage.PETtest(values_as_rvector)
+            test_result = rvector_to_pydict(test_result)
+            test_result['method']='Petitt Test'
+#           test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
+            breakpoint_results.append(test_result)
+        if 'bhr' in testnames:
+            test_result = rtrendpackage.BHRtest(values_as_rvector)
+            test_result = rvector_to_pydict(test_result)
+            test_result['method']='Buishand Range Test'
+#            test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
+            breakpoint_results.append(test_result)
+        if 'von' in testnames:
+            test_result = rtrendpackage.VONtest(values_as_rvector)
+            von_result = rvector_to_pydict(test_result)
+            von_result['method']='Von Neumann Ratio test'
+#           von_result['estimate'] = [None] # The list mimics the structure of the R output from the tests.
+#            von_result['estimate_formatted'] = [None] # The list mimics the structure of the R output from the tests.
+            breakpoint_results.append(von_result)
+        # Restructure test results to pandas dataframe
+        colnames = ['method','statistic','breakpoint','significance']
+        rows_list = []
+        for breakpoint_row in breakpoint_results:
+            dict1 = OrderedDict()
+            dict1.update({colname : breakpoint_row[colname] for colname in colnames})
+            rows_list.append(dict1)
+        # Create a dataframe to save breakpoint test results
+        df_breakpoints = pd.DataFrame(rows_list)
+        # Add additional column, with formatted breakpoints
+        #df_breakpoints['estimate_formatted'] = input_ts.index[df_breakpoints['estimate']]
+        return df_breakpoints
+
+
 
     def __get_breakpoints__(self,data_ts,resamplefreq=None):
         # By default on Monthly data
