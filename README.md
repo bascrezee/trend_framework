@@ -40,7 +40,7 @@ The file _c3s_511_trends.py_ contains the class TrendLims1D in which different d
 ## Clone this repository
 Navigate to the directory where you want the software to be installed and clone this repository. The Jupyter notebook is started with the command `jupyter-notebook`.
 
-# ECV evaluator guidance
+# ECV evaluator guidance [in construction]
 
 ## Evaluate dataset homogeneity
 Run breakpoint tests on the values and the variance of the data. Is the data marked as suspect? Are the outcomes according to what you would expect from expert knowledge? Are the findings consistent with the information that is provided by the dataprovider or any other studies that look into the homogeneity of the dataset?
