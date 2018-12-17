@@ -42,11 +42,11 @@ Navigate to the directory where you want the software to be installed and clone 
 
 # ECV evaluator guidance [in construction]
 
-## Evaluate dataset homogeneity
-Run breakpoint tests on the values and the variance of the data. Is the data marked as suspect? Are the outcomes according to what you would expect from expert knowledge? Are the findings consistent with the information that is provided by the dataprovider or any other studies that look into the homogeneity of the dataset?
+## Product homogeneity
+Run breakpoint tests on the values and the variance of the data product. Is the data marked as suspect? Are the outcomes ain agreement with what you would expect as an expert? Are the findings consistent with the information that is provided by the dataprovider or any other studies that looked into the homogeneity of the product?
 
-## In which regions is it possible to quantify if the GCOS requirements on temporal stability are met?
-To be implemented.
+## Is the timeseries long enough to assess GCOS requirements?
+Apply the weatherhead framework to the data product. Is the dataset long enough to assess the GCOS requirements?
 
 # Usefull material
 - ATBD document from ECA&D: https://www.ecad.eu/documents/atbd.pdf
