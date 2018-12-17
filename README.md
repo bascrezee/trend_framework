@@ -45,7 +45,7 @@ Navigate to the directory where you want the software to be installed and clone 
 ## Product homogeneity
 Run breakpoint tests on the values and the variance of the data product. Is the data marked as suspect? Are the outcomes in agreement with what you would expect as an expert? Are the findings consistent with the information that is provided by the dataprovider or any other studies that looked into the homogeneity of the product?
 
-## Is the timeseries long enough to assess GCOS requirements?
+## Is the timeseries long enough to assess the GCOS stability requirements?
 Apply the weatherhead framework to the data product. Is the dataset long enough to assess the GCOS requirements?
 
 # Usefull material
