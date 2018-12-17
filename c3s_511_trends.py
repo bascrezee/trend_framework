@@ -265,8 +265,6 @@ class TrendLims1D:
         #df_breakpoints['estimate_formatted'] = input_ts.index[df_breakpoints['estimate']]
         return df_breakpoints
 
-
-
     def __get_breakpoints__(self,data_ts,resamplefreq=None):
         # By default on Monthly data
         data_ts = data_ts.resample(resamplefreq).mean()
@@ -349,7 +347,7 @@ class TrendLims1D:
         xaxis = self.data_ts.index.to_julian_date()
         yaxis = self.data_ts.values
         results = linregress(xaxis,yaxis)
-        self.fitted['trend_linear'] = xaxis*results.slope+results.intercept
+        self.fitted['linear'] = xaxis*results.slope+results.intercept
         results_dict = {}
         results_dict['slope']=results.slope*(365.25*10) # From /day to /decade
         if results.pvalue <= self.params['alpha']:
@@ -372,7 +370,7 @@ class TrendLims1D:
 
         theilsen_result = theilslopes(yaxis,x=xaxis,alpha=self.params['alpha'])
         slope,intercept,slope_low,slope_up = theilsen_result
-        self.fitted['trend_theilsen'] = xaxis*slope+intercept
+        self.fitted['theilsen'] = xaxis*slope+intercept
         assert(slope_low <= slope <= slope_up) # Just to be safe, check this
         slope_sign = np.sign(slope)
         if not slope_low < 0.0 < slope_up:
@@ -418,6 +416,45 @@ class TrendLims1D:
 
     def remove_trend(self,fit_name=None):
         self.data_ts = self.data_ts-self.fitted[fit_name]
+
+    def weatherhead_framework(self,trend_name='theilsen',trend_magnitude=None):
+        ''' This framework follows  Weatherhead et al. 1998 [1] for estimating the amount of years needed to detect a trend of certain magnitude with a probability of 90%.
+
+        Data is initially resampled to yearly means.
+
+        Parameters
+        ----------
+        trend_name : str
+            The name of the trend method used for detrending the data
+        trend_magnitude : float
+            The magnitude of the trend in [data units/decade] in which one would be interested
+
+        Returns
+        -------
+            A dictionary containing:
+                trend_magnitude : same as above
+                std_res : the standard deviation of the residuals
+                acf_res : the 1-lag autocorrelation
+                n_star : the estimated number of years
+        
+        References
+        -----------
+        [1] Weatherhead, Betsy & C. Reinsel, Gregory & C. Tiao, George & Meng, Xiao-Li & Choi, Dongseok & Cheang, Wai-Kwong & Keller, Teddie & DeLuisi, John & Wuebbles, Donald & Kerr, J & J. Miller, Alvin & Oltmans, Samuel. (1998). Factors affecting the detection of trends: Statistical considerations and applications to environmental data. Journal of Geophysical Research. 1031. 17149-17162. 10.1029/98JD00995. 
+        '''
+        self.data_ts = self.data_ts.resample('Y').mean()
+        self.do_trends(trend_names=[trend_name])
+        self.remove_trend(fit_name=trend_name)
+        # Calculate according to Weatherhead et al. 
+        std_res = np.std(self.data_ts.values)
+        acf_res = acf(self.data_ts.values,nlags=1)[-1]
+        trend_magnitude_per_year = trend_magnitude/10.
+        n_star = ((3.3*std_res/np.abs(trend_magnitude_per_year))*((1+acf_res)/(1-acf_res))**.5)**(2./3)
+        weatherhead_dict = OrderedDict({'trend_magnitude [/decade]' : trend_magnitude, 'std_res' : std_res,'acf_res' : acf_res, 'n_star' : n_star},index=[0])
+
+        # Restructure test results to pandas dataframe
+        # Create a dataframe to save breakpoint test results
+        self.weatherhead = pd.DataFrame(weatherhead_dict)
+        return self.weatherhead
 
     def do_residual_analysis(self,fit_name=None):
         '''
@@ -579,7 +616,7 @@ class TrendLims1D:
         
 def assess_trend_consistency(trendobject):
     trend_consistency_score = 0
-    all_trends = [trendobject.stats_summary[trendname]['trend'] for trendname in ['trend_linear','trend_mannkendall','trend_theilsen']]
+    all_trends = [trendobject.stats_summary[trendname]['trend'] for trendname in ['linear','mk','theilsen']]
     trend_text = {
         -1 : 'a negative trend',
         0  : 'no trend',
@@ -595,7 +632,7 @@ def assess_trend_consistency(trendobject):
         print("Two out of three trend tests indicate {0}.".format(trend_text[most_common]))
         trend_consistency_score += 1 # Dummy statement, just for completion of the scoring
     slope_consistency_score = 0
-    name_a,name_b='trend_linear','trend_theilsen'
+    name_a,name_b='linear','theilsen'
     slope_a_within_range_b = trendobject.stats_summary[name_b]['slope_low'] <= trendobject.stats_summary[name_a]['slope'] <= trendobject.stats_summary[name_b]['slope_up']
     slope_b_within_range_a = trendobject.stats_summary[name_a]['slope_low'] <= trendobject.stats_summary[name_b]['slope'] <= trendobject.stats_summary[name_a]['slope_up']
     overlap_of_range = max(trendobject.stats_summary[name_a]['slope_low'],trendobject.stats_summary[name_a]['slope_up']) <= min(trendobject.stats_summary[name_b]['slope_low'],trendobject.stats_summary[name_b]['slope_up'])
