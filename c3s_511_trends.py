@@ -123,15 +123,26 @@ class TrendLims1D:
         self.data_cube = iris.util.squeeze(self.data_cube)
         self.data_ts = iris.pandas.as_series(self.data_cube)
         self.data_ts_copy = copy.deepcopy(self.data_ts)
+
+        # Do a check on missing values
+        self.__check_missingvalues__()
+
+    def __check_missingvalues__(self):
+        if self.data_ts.isnull().any():
+            print("Warning: the data contains missing values")
+
     def reset(self):
         self.data_ts = self.data_ts_copy
         self.logbook = self.logbook[1:] # Only preserve first line, with info on loading
+
     def subset(self,timeslice):
         '''
         Subsetting over time.
         '''
         self.data_ts = self.data_ts[timeslice]
         self.add_to_logbook('Subsetted to timeperiod {0}-{1}'.format(timeslice.start,timeslice.stop))
+        # Do a check on missing values
+        self.__check_missingvalues__()
     
     def decompose_seasonal(self,inplace=False,freq=None):
         results = seasonal_decompose(self.data_ts,model='additive',freq=freq)
@@ -151,6 +162,8 @@ class TrendLims1D:
         '''
         self.data_ts = self.data_ts.resample(target_freq).mean()
         self.add_to_logbook('Resampled to {0} frequency'.format(target_freq))
+        # Do a check on missing values
+        self.__check_missingvalues__()
 
     def breakpoint_recipe_values(self,resamplefreq='Y',rpackagename='trend'):
         '''
