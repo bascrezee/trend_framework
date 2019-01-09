@@ -62,16 +62,26 @@ Run breakpoint tests on the values and the variance of the data product. Is the 
 Apply the weatherhead framework to the data product. Is the dataset long enough to assess the GCOS requirements?
 
 ### Upload your results to this repository to share with others
-First make sure your local repository is up-to-date with the remote repository by executing:
-`git pull`
+First make sure your local repository is up-to-date with the remote repository by executing
+```
+git pull
+```
 See an overview of the files that you have added yourself
-`git status`
+```
+git status
+```
 Add all the files that you have added
-`git add myfile`
+```
+git add myfile
+```
 Commit your results (this is stil a local command) with a usefull commit message
-`git commit -m "Added test notebook for soil moisture"`
+```
+git commit -m "Added test notebook for soil moisture"
+```
 Push your results to the remote repository
-`git push`
+```
+git push
+```
 
 # Usefull material
 - ATBD document from ECA&D: https://www.ecad.eu/documents/atbd.pdf
