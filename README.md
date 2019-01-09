@@ -1,4 +1,5 @@
-# Trend framework
+Trend framework
+===============
 
 This is a private repository intended for development of the 'trends and their limits' framework from Oct 2018 within the C3S_511 project.
 
@@ -6,9 +7,10 @@ In the first stage, the diagnostics will be tested on one dimensional data (eith
 
 The file _c3s_511_trends.py_ contains the class TrendLims1D in which different diagnostics are implemented, and more will be implemented in the future. The files with the extension `.ipynb` are Jupyter notebook files and serve as examples for using the framework. For users who have no experience with the Jupyter notebook, it is recommended to read sections 1.1 and 3 from [this tutorial](https://jupyter-notebook-beginner-guide.readthedocs.io/en/latest/what_is_jupyter.html#notebook-document).
 
-# Installation
+Installation
+===============
 
-## Creating the environment
+### Creating the environment
  - Create the environment needed for ESMValTool2 as described [here](https://esmvaltool.readthedocs.io/en/version2_development/user_guide2/index.html#installing-esmvaltool) with the Python 3 environment (note for ETH users: replace `python=3` with `python=3.6`)
  - conda install -c r rpy2
  - conda install jupyter
@@ -37,26 +39,39 @@ The file _c3s_511_trends.py_ contains the class TrendLims1D in which different d
  else:
     print("Warning: installation of the 'trend' R package was not succesfull")
  ```
-## Clone this repository
+### Clone this repository
 Navigate to the directory where you want the software to be installed and clone this repository. The Jupyter notebook is started with the command `jupyter-notebook`.
 
-# ECV evaluator guidance [in construction]
+ECV evaluator guidance [in construction]
+===========================================
 The aim of this framework to (1) analyze the dataset on the presence of potential breakpoints and (2) to calculate the length of the timeseries that is needed to detect a trend larger than a certain magnitude (which can be taken to be the GCOS stability). The framework is in development, therefore, don't hesitate to provide feedback, contribute to the code, or to the documentation by opening an issue.
 
-## Download test data for your ECV from the CDS
+### Download test data for your ECV from the CDS
 Use the script 'cds_toolbox_script.py' as an example script for downloading data from the Climate Data Store (CDS). It can be copy-pasted into the Toolbox and adapted towards your own needs. Choose 2-3 different grid points to do the analysis.
 
-## Perform the analysis
+### Perform the analysis
 Copy the notebook 'test_cds_esacci_sm.ipynb' and follow the given structure, thereby answering the following questions.
 
-### Dataset description
+###### Dataset description
 Give a brief description of the dataset focussing on information that might be relevant for the trend framework. Briefly describe which locations you selected to do the analysis.
 
-### Product homogeneity
+###### Product homogeneity
 Run breakpoint tests on the values and the variance of the data product. Is the data marked as suspect? Are the outcomes in agreement with what you would expect as an expert? Are the findings consistent with the information that is provided by the dataprovider or any other studies that looked into the homogeneity of the product?
 
-### Is the timeseries long enough to assess the GCOS stability requirements?
+###### Is the timeseries long enough to assess the GCOS stability requirements?
 Apply the weatherhead framework to the data product. Is the dataset long enough to assess the GCOS requirements?
+
+### Upload your results to this repository to share with others
+First make sure your local repository is up-to-date with the remote repository by executing:
+`git pull`
+See an overview of the files that you have added yourself
+`git status`
+Add all the files that you have added
+`git add myfile`
+Commit your results (this is stil a local command) with a usefull commit message
+`git commit -m "Added test notebook for soil moisture"`
+Push your results to the remote repository
+`git push`
 
 # Usefull material
 - ATBD document from ECA&D: https://www.ecad.eu/documents/atbd.pdf
