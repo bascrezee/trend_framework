@@ -44,14 +44,18 @@ Navigate to the directory where you want the software to be installed and clone 
 The aim of this framework to (1) analyze the dataset on the presence of potential breakpoints and (2) to calculate the length of the timeseries that is needed to detect a trend larger than a certain magnitude (which can be taken to be the GCOS stability). The framework is in development, therefore, don't hesitate to provide feedback, contribute to the code, or to the documentation by opening an issue.
 
 ## Download test data for your ECV from the CDS
-Use the script 'cds_toolbox_script.py' as an example script for downloading data from the Climate Data Store (CDS). It can be copy-pasted into the Toolbox and adapted towards your own needs.
+Use the script 'cds_toolbox_script.py' as an example script for downloading data from the Climate Data Store (CDS). It can be copy-pasted into the Toolbox and adapted towards your own needs. Choose 2-3 different grid points to do the analysis.
 
-## Copy the notebook
+## Perform the analysis
+Copy the notebook 'test_cds_esacci_sm.ipynb' and follow the given structure, thereby answering the following questions.
 
-## Product homogeneity
+### Dataset description
+Give a brief description of the dataset focussing on information that might be relevant for the trend framework. Briefly describe which locations you selected to do the analysis.
+
+### Product homogeneity
 Run breakpoint tests on the values and the variance of the data product. Is the data marked as suspect? Are the outcomes in agreement with what you would expect as an expert? Are the findings consistent with the information that is provided by the dataprovider or any other studies that looked into the homogeneity of the product?
 
-## Is the timeseries long enough to assess the GCOS stability requirements?
+### Is the timeseries long enough to assess the GCOS stability requirements?
 Apply the weatherhead framework to the data product. Is the dataset long enough to assess the GCOS requirements?
 
 # Usefull material
