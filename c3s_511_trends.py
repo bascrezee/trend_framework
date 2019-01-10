@@ -73,7 +73,19 @@ def get_qc_class_and_string(pd_df):
 
 
 class TrendLims1D:
-    def __init__(self,name,verbose=True,params={'alpha' : 0.05, 'trend_magnitude' : None, 'n_mc' : 20000}):
+    '''  Object representing one-dimensional timeseries data and specified methods for detection of trends, breakpoints etc. 
+    '''
+
+    def __init__(self,name,verbose=True,params={'alpha' : 0.05}):
+        '''Initialization of the object with the option to set some parameters that are used globally
+
+        Parameters
+        ----------
+        params : dictionary, containing:
+
+        alpha : float
+            The value of alpha used for the trend tests
+        '''
         self.name = name
         self.verbose = verbose
         self.params = params
@@ -81,11 +93,13 @@ class TrendLims1D:
         self.stats_summary = {}
         self.logbook = []
         self.fitted = {}
+
     def create_artificial(self,*kwargs):
-        '''
+        '''Function to create artificial data
+
         Example usage: create_artificial(periods = 100,freq = 'Y',mean = 1,trend_magnitude = 0.03,noise_magnitude = 0.05,jump_magnitude = 0.05,jump_start = 20,jump_length = 20)
         '''
-        self.add_to_logbook("Created an artificial timeseries")
+        self.__add_to_logbook__("Created an artificial timeseries")
         # Default parameters for creating random test data
         pars_artificial = dict(periods = 100,freq = 'Y',mean = 1,trend_magnitude = 0.03,noise_magnitude = 0.05,jump_magnitude = 0.05,jump_start = 20,jump_length = 20)
         # Update the default parameters with custom parameters
@@ -109,11 +123,14 @@ class TrendLims1D:
     def load_file(self,filename,var_name=None):
         ''' Loading a netCDF file. If the file has more than one variable, the variable name needs to be given 
         
-            Input:
-                filename:  the filename
-                var_name:  the variable name
+        Parameters
+        ----------
+            filename : str
+                the filename
+            var_name : str, optional
+                the variable name (only needed when more than one variable is present on the file)
         '''
-        self.add_to_logbook("Loaded datafile {0}".format(filename))
+        self.__add_to_logbook__("Loaded datafile {0}".format(filename))
         # Load the data
         if var_name is not None:
             variable_constraint = iris.Constraint(cube_func=(lambda c: c.var_name == var_name))
@@ -123,6 +140,7 @@ class TrendLims1D:
         self.data_cube = iris.util.squeeze(self.data_cube)
         self.data_ts = iris.pandas.as_series(self.data_cube)
         self.data_ts_copy = copy.deepcopy(self.data_ts)
+        self.data_cube_copy = copy.deepcopy(self.data_cube)
 
         # Do a check on missing values
         self.__check_missingvalues__()
@@ -132,72 +150,189 @@ class TrendLims1D:
             print("Warning: the data contains missing values")
 
     def reset(self):
+        ''' Restore the timeseries data to the state right after reading in the file or having created the artificial data
+        '''
+        self.data_cube = self.data_cube_copy
         self.data_ts = self.data_ts_copy
         self.logbook = self.logbook[1:] # Only preserve first line, with info on loading
 
     def subset(self,timeslice):
-        '''
-        Subsetting over time.
+        ''' Subset over time.
+
+        Parameters
+        ----------
+            timeslice : slice
+                a slice object representing the wanted timeslice
+        
+        Example usage: 
+            mydat.subset(slice('1950-01-01','2017-12-31'))
+
         '''
         self.data_ts = self.data_ts[timeslice]
-        self.add_to_logbook('Subsetted to timeperiod {0}-{1}'.format(timeslice.start,timeslice.stop))
+        self.__add_to_logbook__('Subsetted to timeperiod {0}-{1}'.format(timeslice.start,timeslice.stop))
         # Do a check on missing values
         self.__check_missingvalues__()
-    
+
+    def extract_season(self,season):
+        ''' Extract a certain season. 
+
+        NB: Apply this function right after loading the data
+
+        Parameters
+        ----------
+            season : str
+                either 'djf','mam','jja','son'
+        '''
+        import iris.coord_categorisation
+        clim_seasons = ['djf','mam','jja','son']
+        if season not in clim_seasons:
+            print("Season should be one of the following: ",clim_seasons)
+            raise ValueError
+        try:
+            iris.coord_categorisation.add_season(self.data_cube, 'time', name='clim_season')
+        except ValueError: # Probably the coordinate has been added already, therefore pass. 
+            pass
+        constraint = iris.Constraint(clim_season=season)
+        self.data_cube = self.data_cube.extract(constraint)
+        # Update timeseries as well
+        self.data_ts = iris.pandas.as_series(self.data_cube)
+        self.__add_to_logbook__('Extracted season {0}'.format(season))
+
+    def extract_month(self,month):
+        ''' Extract a certain month. 
+
+        NB: Apply this function right after loading the data
+
+        Parameters
+        ----------
+            month : str
+                either 'Jan','Feb','Mar', 'Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
+        '''
+        import iris.coord_categorisation
+        clim_months = ['Jan','Feb','Mar', 'Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+        if month not in clim_months:
+            print("Month should be one of the following: ",clim_months)
+            raise ValueError
+        try:
+            iris.coord_categorisation.add_month(self.data_cube, 'time', name='months')
+        except ValueError: # Probably the coordinate has been added already, therefore pass. 
+            pass
+        constraint = iris.Constraint(months=month)
+        self.data_cube = self.data_cube.extract(constraint)
+        # Update timeseries as well
+        self.data_ts = iris.pandas.as_series(self.data_cube)
+        self.__add_to_logbook__('Extracted month {0}'.format(month))
+
     def decompose_seasonal(self,inplace=False,freq=None):
+        ''' Decompose the data into a seasonal cycle, a trend, and a residual. If used with inplace=True, it deseasonalizes the data.
+
+        Parameters
+        ----------
+            inplace : bool
+                If False, the result is returned. If True, the object is deseasonalized
+        '''
         results = seasonal_decompose(self.data_ts,model='additive',freq=freq)
         signal = results.trend
         seasonal = results.seasonal
         residue = results.resid
         # Note that the seasonal fit, is a sum of the seasonal sign and the dataset mean
-        self.fitted['seasonal'] = results.seasonal #+ self.data_ts.mean()
+        self.fitted['seasonal'] = results.seasonal 
         if inplace:
             self.data_ts = self.data_ts-(self.fitted['seasonal'])
+            self.__add_to_logbook__('Deseasonalized the data')
         else:
             return results
     
-    def resample(self,target_freq):
+    def resample(self,resamplefreq,dropna=True):
+        ''' Resample the data to the target frequency
+
+        Parameters
+        ----------
+        resamplefreq : str
+            The frequency to which to resample the data
+
+        Example usage: 
+            mydat.resample('Y') # Y=Yearly, M=Monthly, D=Daily
         '''
-        Resampling to the target freq
-        '''
-        self.data_ts = self.data_ts.resample(target_freq).mean()
-        self.add_to_logbook('Resampled to {0} frequency'.format(target_freq))
-        # Do a check on missing values
-        self.__check_missingvalues__()
+        if dropna:
+            self.data_ts = self.data_ts.resample(resamplefreq).mean().dropna()
+        else:
+            self.data_ts = self.data_ts.resample(resamplefreq).mean()
+            # Do a check on missing values
+            self.__check_missingvalues__()
+        self.__add_to_logbook__('Resampled to {0} frequency'.format(resamplefreq))
 
     def breakpoint_recipe_values(self,resamplefreq='Y',rpackagename='trend'):
-        '''
-        # This function applies 4 homogeneity tests to yearly (by default) means of the data, similar to most climate variables in the ATBD from ECA&D
+        ''' Apply four homogeneity tests to yearly means of the data, similar to most climate variables in the ATBD from ECA&D
+
+        The tests either accept or reject the null hypothesis (no breakpoints present):
+        
+        If n_rejects <= 1        --> data marked as usefull
+        Else if n_rejects == 2   --> data marked as doubtfull
+        Else if n_rejects >2     --> data marked as suspect
+
+        Parameters
+        ----------
+        resamplefreq : str
+            The frequency to which to resample the data before applying the breakpoint detection
+        rpackagename : str
+            The name of the R-package to use for the breakpoint detection, either 'trend' (default) or 'iki.dataclim'
+
+        References
+        ----------
+        rpackagename='trend':
+            https://cran.r-project.org/web/packages/trend/index.html
+        rpackagename='iki.dataclim':
+            https://cran.r-project.org/web/packages/iki.dataclim/index.html
         '''
         breakpoint_input = self.data_ts.resample(resamplefreq).mean()
         if rpackagename=='trend':
-            self.breakpoints = self.test_breakpoint_rtrend(breakpoint_input,['snh','pet','bhr','von'])
+            self.breakpoints = self.__test_breakpoint_rtrend__(breakpoint_input,['snh','pet','bhr','von'])
             self.qc_status_int,self.qc_status=get_qc_class_and_string(self.breakpoints)
             print("This timeseries is marked as {0} (value based)".format(self.qc_status))
         elif rpackagename=='iki.dataclim':
-            self.breakpoints = self.test_breakpoint_rikidataclim(breakpoint_input,['snh','pet','bhr','von'])
+            self.breakpoints = self.__test_breakpoint_rikidataclim__(breakpoint_input,['snh','pet','bhr','von'])
 
     def breakpoint_recipe_differences(self,resamplefreq='Y',rpackagename='trend'):
-        '''
-        # This function applies 4 homogeneity tests to yearly (by default) means of day-to-day absolute differences of the data, similar to one of the climate variables in the ATBD from ECA&D
+        ''' Apply four homogeneity tests to yearly means of day-to-day absolute differences of the data, similar to most climate variables in the ATBD from ECA&D
+
+        The tests either accept or reject the null hypothesis (no breakpoints present):
+        
+        If n_rejects <= 1        --> data marked as usefull
+        Else if n_rejects == 2   --> data marked as doubtfull
+        Else if n_rejects >2     --> data marked as suspect
+
+        Parameters
+        ----------
+        resamplefreq : str
+            The frequency to which to resample the data before applying the breakpoint detection
+        rpackagename : str
+            The name of the R-package to use for the breakpoint detection, either 'trend' (default) or 'iki.dataclim'
+
+        References
+        ----------
+        rpackagename='trend':
+            https://cran.r-project.org/web/packages/trend/index.html
+        rpackagename='iki.dataclim':
+            https://cran.r-project.org/web/packages/iki.dataclim/index.html
         '''
         absdiff = self.data_ts.diff().abs()
         absdiff = absdiff[slice(1,None)] # Cut the first value since it is NaN
         self.differences = absdiff.resample(resamplefreq).mean()
-        if rpackagename=='trend':  
-            self.breakpoints = self.test_breakpoint_rtrend(self.differences,['snh','pet','bhr','von'])
+        if rpackagename=='trend':
+            self.breakpoints = self.__test_breakpoint_rtrend__(self.differences,['snh','pet','bhr','von'])
             self.qc_status_int,self.qc_status=get_qc_class_and_string(self.breakpoints)
             print("This timeseries is marked as {0} (variance based)".format(self.qc_status))
         elif rpackagename=='iki.dataclim':
-            self.breakpoints = self.test_breakpoint_rikidataclim(self.differences,['snh','pet','bhr','von'])
+            self.breakpoints = self.__test_breakpoint_rikidataclim__(self.differences,['snh','pet','bhr','von'])
 
-    def test_breakpoint_rtrend(self,input_ts,testnames):
+    def __test_breakpoint_rtrend__(self,input_ts,testnames,n_mc=20000):
         values = input_ts.values
         values_as_rvector = robjects.FloatVector(values)
         rtrendpackage = rpackages.importr('trend') # This should be moved somewhere else, when doing many calls to this function
         breakpoint_results = []
         if 'snh' in testnames:
-            test_result = rtrendpackage.snh_test(values_as_rvector,m=self.params['n_mc'])
+            test_result = rtrendpackage.snh_test(values_as_rvector,m=n_mc)
             test_result = rvector_to_pydict(test_result)
             test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
             breakpoint_results.append(test_result)
@@ -207,12 +342,12 @@ class TrendLims1D:
             test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
             breakpoint_results.append(test_result)
         if 'bhr' in testnames:
-            test_result = rtrendpackage.br_test(values_as_rvector,m=self.params['n_mc'])
+            test_result = rtrendpackage.br_test(values_as_rvector,m=n_mc)
             test_result = rvector_to_pydict(test_result)
             test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
             breakpoint_results.append(test_result)
         if 'bu' in testnames:
-            test_result = rtrendpackage.bu_test(values_as_rvector,m=self.params['n_mc'])
+            test_result = rtrendpackage.bu_test(values_as_rvector,m=n_mc)
             test_result = rvector_to_pydict(test_result)
             test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
             breakpoint_results.append(test_result)
@@ -235,7 +370,7 @@ class TrendLims1D:
         #df_breakpoints['estimate_formatted'] = input_ts.index[df_breakpoints['estimate']]
         return df_breakpoints
 
-    def test_breakpoint_rikidataclim(self,input_ts,testnames):
+    def __test_breakpoint_rikidataclim__(self,input_ts,testnames):
         values = input_ts.values
         values_as_rvector = robjects.FloatVector(values)
         rtrendpackage = rpackages.importr('iki.dataclim') # This should be moved somewhere else, when doing many calls to this function
@@ -244,19 +379,16 @@ class TrendLims1D:
             test_result = rtrendpackage.SNHtest(values_as_rvector)
             test_result = rvector_to_pydict(test_result)
             test_result['method']='SNH Test'
-#            test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
             breakpoint_results.append(test_result)
         if 'pet' in testnames:
             test_result = rtrendpackage.PETtest(values_as_rvector)
             test_result = rvector_to_pydict(test_result)
             test_result['method']='Petitt Test'
-#           test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
             breakpoint_results.append(test_result)
         if 'bhr' in testnames:
             test_result = rtrendpackage.BHRtest(values_as_rvector)
             test_result = rvector_to_pydict(test_result)
             test_result['method']='Buishand Range Test'
-#            test_result['estimate_formatted'] = [input_ts.index[test_result['estimate'][0]]]
             breakpoint_results.append(test_result)
         if 'von' in testnames:
             test_result = rtrendpackage.VONtest(values_as_rvector)
@@ -278,35 +410,7 @@ class TrendLims1D:
         #df_breakpoints['estimate_formatted'] = input_ts.index[df_breakpoints['estimate']]
         return df_breakpoints
 
-    def __get_breakpoints__(self,data_ts,resamplefreq=None):
-        # By default on Monthly data
-        data_ts = data_ts.resample(resamplefreq).mean()
-        datavalues = data_ts.values
-        data_ts_as_rvector = robjects.FloatVector(datavalues)
-        rtrendpackage = rpackages.importr('trend')
-        snh_result = rtrendpackage.snh_test(data_ts_as_rvector,m=self.params['n_mc'])
-        snh_result = rvector_to_pydict(snh_result)
-        pettitt_result = rtrendpackage.pettitt_test(data_ts_as_rvector)
-        pettitt_result = rvector_to_pydict(pettitt_result)
-        br_result = rtrendpackage.br_test(data_ts_as_rvector,m=self.params['n_mc'])
-        br_result = rvector_to_pydict(br_result)
-        bu_result = rtrendpackage.bu_test(data_ts_as_rvector,m=self.params['n_mc'])
-        bu_result = rvector_to_pydict(bu_result)
-        breakpoint_results = [snh_result,pettitt_result,br_result,bu_result]
-
-        colnames = ['method','estimate','p.value']
-        rows_list = []
-        for test_result in breakpoint_results:
-            dict1 = OrderedDict()
-            dict1.update({colname : test_result[colname][0] for colname in colnames})
-            rows_list.append(dict1)
-        # Create a dataframe to save breakpoint test results
-        df_breakpoints = pd.DataFrame(rows_list)
-        # Add additional column, with formatted breakpoints
-        df_breakpoints['estimate_formatted'] = data_ts.index[df_breakpoints['estimate']]
-        return df_breakpoints
-
-    def evaluate_breakpoints(self):
+    def __evaluate_breakpoints__(self):
         # Check for each PD dataframe n_rejects
         qc_class_values,qc_string_values = get_qc_class_and_string(self.breakpoints_values)
         qc_class_absdiffvalues,qc_string_absdiffvalues = get_qc_class_and_string(self.breakpoints_absdiffvalues)
@@ -316,7 +420,7 @@ class TrendLims1D:
         print("Absolute differences: {0}".format(qc_string_absdiffvalues))
 
     def plot(self,label=None,mode='values'):
-        self.add_to_logbook("Creating a plot with label: {0}".format(label))
+        self.__add_to_logbook__("Creating a plot with label: {0}".format(label))
         if mode=='values':
             self.data_ts.plot(label=label)
         elif mode=='differences':
@@ -344,7 +448,7 @@ class TrendLims1D:
     def trend_mktest(self):
         mk_input = self.data_ts.values
         mk_input = mk_input[~np.isnan(mk_input)]
-        trend,h,p,z = self.mk_test(mk_input,alpha=self.params['alpha'])
+        trend,h,p,z = self.__mk_test__(mk_input,alpha=self.params['alpha'])
         # Store results in stats_summary
         results = {}
         results['sign']=trend
@@ -352,7 +456,7 @@ class TrendLims1D:
         results['h']=h
         results['pvalue']=p
         results['z']=z
-        self.add_to_logbook('Calculated Mann-Kendall test')
+        self.__add_to_logbook__('Calculated Mann-Kendall test')
         results['method']='mk'
         return results
 
@@ -371,7 +475,7 @@ class TrendLims1D:
         results_dict['stderr']=results.stderr*(365.25*10)
         results_dict['slope_low'] = results_dict['slope']-results_dict['stderr']
         results_dict['slope_up'] = results_dict['slope']+results_dict['stderr']
-        self.add_to_logbook('Calculated linear trend test')
+        self.__add_to_logbook__('Calculated linear trend test')
         results_dict['method']='linear'
         return results_dict
 
@@ -399,7 +503,7 @@ class TrendLims1D:
         # Add a sign to Theilsen
 
 
-        self.add_to_logbook('Calculated Theil-Sen slope')
+        self.__add_to_logbook__('Calculated Theil-Sen slope')
         results_dict['method']='theilsen'
         results_dict['pvalue']=None # Trend Theilsen has no pvalue
         return results_dict
@@ -519,7 +623,7 @@ class TrendLims1D:
         ax4.set_xticklabels(lag_axis)
         return f
 
-    def mk_test(self,x, alpha=0.05):
+    def __mk_test__(self,x, alpha=0.05):
         """
         This function is derived from code originally posted by Sat Kumar Tomer
         (satkumartomer@gmail.com)
@@ -616,7 +720,7 @@ class TrendLims1D:
             trend = 0
         return trend, h, p, z
 
-    def add_to_logbook(self,logmessage):
+    def __add_to_logbook__(self,logmessage):
         if self.verbose:
             print(logmessage)
         self.logbook.append(logmessage+'\n')
