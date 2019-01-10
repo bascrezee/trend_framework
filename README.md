@@ -42,7 +42,7 @@ Installation
 ### Clone this repository
 Navigate to the directory where you want the software to be installed and clone this repository. The Jupyter notebook is started with the command `jupyter-notebook`.
 
-ECV evaluator guidance [in construction]
+Framework testing guidance [in construction]
 ===========================================
 The aim of this framework to (1) analyze the dataset on the presence of potential breakpoints and (2) to calculate the length of the timeseries that is needed to detect a trend larger than a certain magnitude (which can be taken to be the GCOS stability). The framework is in development, therefore, don't hesitate to provide feedback, contribute to the code, or to the documentation by opening an issue.
 
@@ -61,8 +61,8 @@ Run breakpoint tests on the values and the variance of the data product. Is the 
 ###### Is the timeseries long enough to assess the GCOS stability requirements?
 Apply the weatherhead framework to the data product. Is the dataset long enough to assess the GCOS requirements?
 
-### Upload your results to this repository to share with others
-First make sure your local repository is up-to-date with the remote repository by executing
+### Upload your test results to this repository to share with others
+Upload your jupyter notebook file and the test data (check that the file size is <50 mb) to this repository. First make sure your local repository is up-to-date with the remote repository by executing
 ```
 git pull
 ```
