@@ -62,7 +62,8 @@ Run breakpoint tests on the values and the variance of the data product. Is the 
 Apply the weatherhead framework to the data product. Is the dataset long enough to assess the GCOS requirements?
 
 ### Upload your test results to this repository to share with others
-Upload your jupyter notebook file and the test data (check that the file size is <50 mb) to this repository. First make sure your local repository is up-to-date with the remote repository by executing
+Once you have completed the testing, export your notebook file as a PDF. Upload the PDF to the repository in the directory PDFs.
+First make sure your local repository is up-to-date with the remote repository by executing
 ```
 git pull
 ```
@@ -76,7 +77,7 @@ git add myfile
 ```
 Commit your results (this is stil a local command) with a usefull commit message
 ```
-git commit -m "Added test notebook for soil moisture"
+git commit -m "Added PDF test report for soil moisture"
 ```
 Push your results to the remote repository
 ```
