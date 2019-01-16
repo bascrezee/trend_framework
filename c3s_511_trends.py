@@ -509,6 +509,21 @@ class TrendLims1D:
         return results_dict
         
     def do_trends(self,trend_names=['mk','linear','theilsen']):
+        ''' This function calls the different trend tests.
+
+        Parameters
+        ----------
+        trend_names : str
+            The names of the trend tests that need to be calculated
+
+        The units of the trends are 'variable unit per decade' and are saved in trends
+
+        Returns
+        -------
+            A dictionary containing:
+                trend_magnitude : same as above
+        '''
+
         trend_results = []
         if 'mk' in trend_names:
             mk_result = self.trend_mktest()
@@ -526,9 +541,8 @@ class TrendLims1D:
             dict1 = OrderedDict()
             dict1.update({colname : trend_row[colname] for colname in colnames})
             rows_list.append(dict1)
-        # Create a dataframe to save breakpoint test results
+        # Create a dataframe to save trend test results
         df_trends = pd.DataFrame(rows_list)
-        # Add additional column, with formatted breakpoints
         self.trends = df_trends
 
     def remove_trend(self,fit_name=None):
