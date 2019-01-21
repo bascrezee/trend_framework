@@ -546,7 +546,24 @@ class TrendLims1D:
         self.trends = df_trends
 
     def remove_trend(self,fit_name=None):
-        self.data_ts = self.data_ts-self.fitted[fit_name]
+        '''
+        Remove a trend from the data. In case a linear trend on the data is expected, one 
+        can use 'theilsen' or 'linear'. 
+        For non-linear trends one can choose between either 'polynomial' or 'differences' where 
+        the latter should be chosen in case of a fully stochastic trend.
+        '''
+        if fit_name in ['linear','theilsen']:
+            self.data_ts = self.data_ts-self.fitted[fit_name]
+        elif fit_name=='polynomial':
+            xaxis = self.data_ts.index.to_julian_date().values
+            yaxis = self.data_ts.values
+            d,c,b,a = np.polyfit(xaxis,yaxis,3)
+            y_fit = a+b*xaxis+c*xaxis**2+d*xaxis**3
+            self.data_ts = self.data_ts-y_fit
+        else: 
+            print("Invalid fit_name: ",fit_name)
+            raise ValueError
+        
 
     def weatherhead_framework(self,trend_name='theilsen',trend_magnitude=None):
         ''' This framework follows  Weatherhead et al. 1998 [1] for estimating the amount of years needed to detect a trend of certain magnitude with a probability of 90%.
