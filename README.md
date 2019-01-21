@@ -84,6 +84,33 @@ Push your results to the remote repository
 git push
 ```
 
+Trend and their limits evaluator guidance [in construction]
+============================================================
+
+Detecting trends and breakpoints in timeseries is a challenging task. Not the least, since the two phenomena are linked, and therefore a priori knowledge is needed for a correct approach. For this reason, the evaluator guidance is split into two parts, where the first part is an exploratory phase, where you will evaluate in-depth two or three gridpoints from your dataset. 
+
+#### Exploratory phase
+Select two or three gridpoints from your dataset. Think about a good temporal coverage, and in your selection try to take gridpoints that are representative for a larger subset of the dataset. Also, the selection can take into account earlier studies, that allow for comparison of the results.
+
+##### Trends
+Apply the trend tests to the data. Is there a trend present in the data? Do the Theil-Sen slope estimator and the linear regression estimate of the trend agree? Is the trend constant over time? Or can you identify subsets in the data for which the trend is different. If so, briefly describe the nature of the trend.
+
+##### Breakpoints
+If there is a trend present in the data, it needs to be removed before breakpoint detection is applied. Based on your prior knowledge of the trend within the data, remove it either using the Theil-Sen slope estimate (trend is constant over time) or the polynomial fit (trend changes over time).
+
+#### Creation of maps [in construction]
+ - create your own trend and lims recipe (using knowledge from exploratory phase) and run it on the gridded dataset at yearly resolution
+ - produce maps with:
+     - Theil-Sen slope estimate
+     - Mann-Kendall p-value categories (p<0.05 ; p<0.01)
+     - breakpoint category (data is: usefull, doubtfull, suspect)
+     - timestamps of breakpoints that are abundant
+      
+     
+
+
+
+
 # Usefull material
 - ATBD document from ECA&D: https://www.ecad.eu/documents/atbd.pdf
 - R-package trend documentation: https://cran.r-project.org/web/packages/trend/vignettes/trend.pdf
