@@ -15,6 +15,7 @@ Installation
  - conda install -c r rpy2
  - conda install jupyter
  - conda install statsmodels
+ - conda install -c conda-forge pathos
  - install the following R packages from an R terminal opened while the conda environment is activated (recommended):
     - iki.dataclim
       - lubridate
