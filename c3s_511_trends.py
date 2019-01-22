@@ -145,6 +145,12 @@ class TrendLims1D:
         # Do a check on missing values
         self.__check_missingvalues__()
 
+    def initialize_through_realization_of_cube(self,cube3d,i,j):
+        ''' This function takes a certain gridpoint from a lazy cube and realizes this gridpoint '''
+        self.data_cube = iris.util.squeeze(cube3d[:,i,j])
+        self.data_ts = iris.pandas.as_series(self.data_cube)
+        # Do not add a copy in this case
+
     def __check_missingvalues__(self):
         if self.data_ts.isnull().any():
             print("Warning: the data contains missing values")
@@ -199,7 +205,7 @@ class TrendLims1D:
         self.__add_to_logbook__('Extracted season {0}'.format(season))
 
     def extract_month(self,month):
-        ''' Extract a certain month. 
+        ''' Extract a certain month.
 
         NB: Apply this function right after loading the data
 
@@ -209,7 +215,7 @@ class TrendLims1D:
                 either 'Jan','Feb','Mar', 'Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
         '''
         import iris.coord_categorisation
-        clim_months = ['Jan','Feb','Mar', 'Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+        clim_months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
         if month not in clim_months:
             print("Month should be one of the following: ",clim_months)
             raise ValueError
@@ -563,7 +569,6 @@ class TrendLims1D:
         else: 
             print("Invalid fit_name: ",fit_name)
             raise ValueError
-        
 
     def weatherhead_framework(self,trend_name='theilsen',trend_magnitude=None):
         ''' This framework follows  Weatherhead et al. 1998 [1] for estimating the amount of years needed to detect a trend of certain magnitude with a probability of 90%.
@@ -762,6 +767,16 @@ class TrendLims1D:
     def print_stats(self):
         pprint.pprint(self.stats_summary)
         
+
+
+
+
+
+
+
+
+
+
 def assess_trend_consistency(trendobject):
     trend_consistency_score = 0
     all_trends = [trendobject.stats_summary[trendname]['trend'] for trendname in ['linear','mk','theilsen']]
