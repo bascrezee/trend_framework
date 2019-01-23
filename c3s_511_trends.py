@@ -549,6 +549,14 @@ class TrendLims1D:
             rows_list.append(dict1)
         # Create a dataframe to save trend test results
         df_trends = pd.DataFrame(rows_list)
+        # Calculate additionally the slope in percentage
+        df_trends['slope [percent/decade]'] = df_trends['slope']/self.data_cube.collapsed('time',iris.analysis.MEAN).data
+        # Reorder the columns
+        columns_right_order = ['method','sign','slope','slope [percent/decade]','pvalue']
+        df_trends = df_trends[columns_right_order]
+        # Rename column(s)
+        slope_name = 'slope [{0}/decade]'.format(str(self.data_cube.units))
+        df_trends.rename(columns={'slope' : slope_name},inplace=True)
         self.trends = df_trends
 
     def remove_trend(self,fit_name=None):
