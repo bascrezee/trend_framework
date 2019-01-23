@@ -556,7 +556,7 @@ class TrendLims1D:
         # Create a dataframe to save trend test results
         df_trends = pd.DataFrame(rows_list)
         # Calculate additionally the slope in percentage
-        df_trends['slope [percent/decade]'] = df_trends['slope']/self.data_.collapsed('time',iris.analysis.MEAN).data
+        df_trends['slope [percent/decade]'] = df_trends['slope']/self.data_cube.collapsed('time',iris.analysis.MEAN).data
         # Reorder the columns
         columns_right_order = ['method','sign','slope','slope [percent/decade]','pvalue']
         df_trends = df_trends[columns_right_order]
