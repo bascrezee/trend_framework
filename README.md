@@ -85,7 +85,7 @@ Push your results to the remote repository
 git push
 ```
 
-Trend and their limits evaluator guidance [in construction]
+Trends and their limits evaluator guidance [in construction]
 ============================================================
 
 Detecting trends and breakpoints in timeseries is a challenging task. Not the least, since the two phenomena are linked, and therefore a priori knowledge is needed for a correct approach. For this reason, the evaluator guidance is split into two parts, where the first part is an exploratory phase, where you will evaluate in-depth two or three gridpoints from your dataset. 
