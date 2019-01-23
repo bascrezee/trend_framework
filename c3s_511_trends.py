@@ -270,12 +270,9 @@ class TrendLims1D:
         Example usage: 
             mydat.resample('Y') # Y=Yearly, M=Monthly, D=Daily
         '''
-        if dropna:
-            self.data_ts = self.data_ts.resample(resamplefreq).mean().dropna()
-        else:
-            self.data_ts = self.data_ts.resample(resamplefreq).mean()
-            # Do a check on missing values
-            self.__check_missingvalues__()
+        self.data_ts = self.data_ts.resample(resamplefreq).mean()
+        # Do a check on missing values
+        self.__check_missingvalues__()
         self.__add_to_logbook__('Resampled to {0} frequency'.format(resamplefreq))
 
     def breakpoint_recipe_values(self,resamplefreq='Y',rpackagename='trend'):
@@ -539,7 +536,6 @@ class TrendLims1D:
             A dictionary containing:
                 trend_magnitude : same as above
         '''
-
         trend_results = []
         if 'mk' in trend_names:
             mk_result = self.trend_mktest(alpha=alpha)
@@ -560,13 +556,17 @@ class TrendLims1D:
         # Create a dataframe to save trend test results
         df_trends = pd.DataFrame(rows_list)
         # Calculate additionally the slope in percentage
-        df_trends['slope [percent/decade]'] = df_trends['slope']/self.data_cube.collapsed('time',iris.analysis.MEAN).data
+        df_trends['slope [percent/decade]'] = df_trends['slope']/self.data_.collapsed('time',iris.analysis.MEAN).data
         # Reorder the columns
         columns_right_order = ['method','sign','slope','slope [percent/decade]','pvalue']
         df_trends = df_trends[columns_right_order]
         # Rename column(s)
-        slope_name = 'slope [{0}/decade]'.format(str(self.data_cube.units))
-        df_trends.rename(columns={'slope' : slope_name},inplace=True)
+        # Quick fix. Look into issue
+        try:
+            slope_name = 'slope [{0}/decade]'.format(str(self.data_cube.units))
+            df_trends.rename(columns={'slope' : slope_name},inplace=True)
+        except AttributeError:
+            pass
         self.trends = df_trends
 
     def remove_trend(self,fit_name=None):
