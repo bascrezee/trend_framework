@@ -76,19 +76,16 @@ class TrendLims1D:
     '''  Object representing one-dimensional timeseries data and specified methods for detection of trends, breakpoints etc. 
     '''
 
-    def __init__(self,name,verbose=True,params={'alpha' : 0.05}):
+    def __init__(self,name,verbose=True):
         '''Initialization of the object with the option to set some parameters that are used globally
 
         Parameters
         ----------
-        params : dictionary, containing:
-
-        alpha : float
-            The value of alpha used for the trend tests
+        name : str
+            Name of the object
         '''
         self.name = name
         self.verbose = verbose
-        self.params = params
         # Initialize some empty data
         self.stats_summary = {}
         self.logbook = []
@@ -248,8 +245,21 @@ class TrendLims1D:
             self.__add_to_logbook__('Deseasonalized the data')
         else:
             return results
-    
-    def resample(self,resamplefreq,dropna=True):
+
+    def handle_missingdata(self,strategy='dropna'):
+        ''' This function takes care of the missing data. 
+        
+        Parameters
+        ----------
+        strategy : str
+            The strategy for handling missing data (either dropna or fillgaps)
+        '''
+        if strategy=='dropna':
+            self.data_ts = self.data_ts.dropna()
+        elif strategy=='fillgaps':
+            raise NotImplementedError
+
+    def resample(self,resamplefreq):
         ''' Resample the data to the target frequency
 
         Parameters
@@ -428,9 +438,9 @@ class TrendLims1D:
     def plot(self,label=None,mode='values'):
         self.__add_to_logbook__("Creating a plot with label: {0}".format(label))
         if mode=='values':
-            self.data_ts.plot(label=label)
+            self.data_ts.plot(label=label,marker='x')
         elif mode=='differences':
-            self.differences.plot(label=label)
+            self.differences.plot(label=label,marker='x')
         plt.legend()
 
     def plot_breakpoints(self):
@@ -451,10 +461,10 @@ class TrendLims1D:
             plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.25),
                       ncol=3, fancybox=True, shadow=True)
 
-    def trend_mktest(self):
+    def trend_mktest(self,alpha=0.05):
         mk_input = self.data_ts.values
         mk_input = mk_input[~np.isnan(mk_input)]
-        trend,h,p,z = self.__mk_test__(mk_input,alpha=self.params['alpha'])
+        trend,h,p,z = self.__mk_test__(mk_input,alpha=alpha)
         # Store results in stats_summary
         results = {}
         results['sign']=trend
@@ -466,14 +476,14 @@ class TrendLims1D:
         results['method']='mk'
         return results
 
-    def trend_linear(self):
+    def trend_linear(self,alpha=0.05):
         xaxis = self.data_ts.index.to_julian_date()
         yaxis = self.data_ts.values
         results = linregress(xaxis,yaxis)
         self.fitted['linear'] = xaxis*results.slope+results.intercept
         results_dict = {}
         results_dict['slope']=results.slope*(365.25*10) # From /day to /decade
-        if results.pvalue <= self.params['alpha']:
+        if results.pvalue <= alpha:
             results_dict['sign'] = int(np.sign(results.slope))
         else:
             results_dict['sign'] = int(0)
@@ -485,13 +495,13 @@ class TrendLims1D:
         results_dict['method']='linear'
         return results_dict
 
-    def trend_theilsen(self):
+    def trend_theilsen(self,alpha=0.05):
         from scipy.stats.mstats import theilslopes
 
         xaxis = self.data_ts.index.to_julian_date().values
         yaxis = self.data_ts.values
 
-        theilsen_result = theilslopes(yaxis,x=xaxis,alpha=self.params['alpha'])
+        theilsen_result = theilslopes(yaxis,x=xaxis,alpha=alpha)
         slope,intercept,slope_low,slope_up = theilsen_result
         self.fitted['theilsen'] = xaxis*slope+intercept
         assert(slope_low <= slope <= slope_up) # Just to be safe, check this
@@ -514,7 +524,7 @@ class TrendLims1D:
         results_dict['pvalue']=None # Trend Theilsen has no pvalue
         return results_dict
         
-    def do_trends(self,trend_names=['mk','linear','theilsen']):
+    def do_trends(self,trend_names=['mk','linear','theilsen'],alpha=0.05):
         ''' This function calls the different trend tests.
 
         Parameters
@@ -532,13 +542,13 @@ class TrendLims1D:
 
         trend_results = []
         if 'mk' in trend_names:
-            mk_result = self.trend_mktest()
+            mk_result = self.trend_mktest(alpha=alpha)
             trend_results.append(mk_result)
         if 'linear' in trend_names:
-            linear_result = self.trend_linear()
+            linear_result = self.trend_linear(alpha=alpha)
             trend_results.append(linear_result)
         if 'theilsen' in trend_names:
-            theilsen_result = self.trend_theilsen()
+            theilsen_result = self.trend_theilsen(alpha=alpha)
             trend_results.append(theilsen_result)
         # Restructure test results to pandas dataframe
         colnames = ['method','sign','slope','pvalue']
@@ -613,7 +623,7 @@ class TrendLims1D:
         weatherhead_dict = OrderedDict({'trend_magnitude [/decade]' : trend_magnitude, 'std_res' : std_res,'acf_res' : acf_res, 'n_star' : n_star},index=[0])
 
         # Restructure test results to pandas dataframe
-        # Create a dataframe to save breakpoint test results
+        # Create a dataframe to save weatherhead framework results
         self.weatherhead = pd.DataFrame(weatherhead_dict)
         return self.weatherhead
 
