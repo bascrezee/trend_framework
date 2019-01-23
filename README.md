@@ -43,72 +43,10 @@ Installation
 ### Clone this repository
 Navigate to the directory where you want the software to be installed and clone this repository. The Jupyter notebook is started with the command `jupyter-notebook`.
 
-Framework testing guidance [in construction]
+Trends and their limits evaluator guidance 
 ===========================================
-The aim of this framework is to (1) analyze the dataset on the presence of potential breakpoints and (2) to calculate the length of the timeseries that is needed to detect a trend larger than a certain magnitude (which can be taken to be the GCOS stability). The framework is in development, therefore, don't hesitate to provide feedback, contribute to the code, or to the documentation by opening an issue.
 
-### Download test data for your ECV from the CDS
-Use the script 'cds_toolbox_script.py' as an example script for downloading data from the Climate Data Store (CDS). It can be copy-pasted into the Toolbox and adapted towards your own needs. Choose 2-3 different grid points to do the analysis.
-
-### Perform the analysis
-Insert the Python code from the file 'test_cds_esacci_sm.py' into a jupyter notebook. Follow the given structure, thereby answering the following questions:
-
-##### Dataset description
-Give a brief description of the dataset focussing on information that might be relevant for the trend framework. Briefly describe which locations you selected to do the analysis.
-
-##### Product homogeneity
-Run breakpoint tests on the values and the variance of the data product. Is the data marked as suspect? Are the outcomes in agreement with what you would expect as an expert? Are the findings consistent with the information that is provided by the dataprovider or any other studies that looked into the homogeneity of the product?
-
-##### Is the timeseries long enough to assess the GCOS stability requirements?
-Apply the weatherhead framework to the data product. Is the dataset long enough to assess the GCOS requirements?
-
-### Upload your test results to this repository to share with others
-Once you have completed the testing, export your notebook file as a PDF. Upload the PDF to the repository in the directory PDFs.
-First make sure your local repository is up-to-date with the remote repository by executing
-```
-git pull
-```
-See an overview of the files that you have added yourself
-```
-git status
-```
-Add all the files that you have added
-```
-git add myfile
-```
-Commit your results (this is stil a local command) with a usefull commit message
-```
-git commit -m "Added PDF test report for soil moisture"
-```
-Push your results to the remote repository
-```
-git push
-```
-
-Trends and their limits evaluator guidance [in construction]
-============================================================
-
-Detecting trends and breakpoints in timeseries is a challenging task. Not the least, since the two phenomena are linked, and therefore a priori knowledge is needed for a correct approach. For this reason, the evaluator guidance is split into two parts, where the first part is an exploratory phase, where you will evaluate in-depth two or three gridpoints from your dataset. 
-
-#### Exploratory phase
-Select two or three gridpoints from your dataset. Think about a good temporal coverage, and in your selection try to take gridpoints that are representative for a larger subset of the dataset. Also, the selection can take into account earlier studies, that allow for comparison of the results.
-
-##### Trends
-Apply the trend tests to the data. Is there a trend present in the data? Do the Theil-Sen slope estimator and the linear regression estimate of the trend agree? Is the trend constant over time? Or can you identify subsets in the data for which the trend is different. If so, briefly describe the nature of the trend.
-
-##### Breakpoints
-If there is a trend present in the data, it needs to be removed before breakpoint detection is applied. Based on your prior knowledge of the trend within the data, remove it either using the Theil-Sen slope estimate (trend is constant over time) or the polynomial fit (trend changes over time).
-
-#### Creation of maps [in construction]
- - create your own trend and lims recipe (using knowledge from exploratory phase) and run it on the gridded dataset at yearly resolution
- - produce maps with:
-     - Theil-Sen slope estimate
-     - Mann-Kendall p-value categories (p<0.05 ; p<0.01)
-     - breakpoint category (data is: usefull, doubtfull, suspect)
-     - timestamps of breakpoints that are abundant
-      
-     
-
+https://docs.google.com/document/d/1YbG07gdIMjLJmV8zHVy55daJbctNjsZUGNZFSxCuQ0w/edit#
 
 
 
