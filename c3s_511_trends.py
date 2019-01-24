@@ -432,12 +432,12 @@ class TrendLims1D:
         print("Values: {0}".format(qc_string_values))
         print("Absolute differences: {0}".format(qc_string_absdiffvalues))
 
-    def plot(self,label=None,mode='values'):
+    def plot(self,label=None,mode='values',marker='.',ms=4):
         self.__add_to_logbook__("Creating a plot with label: {0}".format(label))
         if mode=='values':
-            self.data_ts.plot(label=label,marker='x')
+            self.data_ts.plot(label=label,marker=marker,ms=ms)
         elif mode=='differences':
-            self.differences.plot(label=label,marker='x')
+            self.differences.plot(label=label,marker=marker,ms=ms)
         plt.legend()
 
     def plot_breakpoints(self):
