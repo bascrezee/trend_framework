@@ -31,7 +31,7 @@ mydat.create_artificial({'periods' : 200, 'jump_start' : 46, 'jump_length': 200,
 mydat.do_trends()
 mydat.resample('Y') # Resample to yearly resolution
 mydat.plot(label='Test data')
-mydat.breakpoint_recipe_values()
+mydat.detect_breakpoints()
 
 
 # # Example B2: How breakpoint detection is affected by removal of the linear trend
@@ -43,11 +43,12 @@ mydat = TrendLims1D('artificial_timeseries')
 print("Creating test data with no jump")
 noise_magnitude = 0.05
 mydat.create_artificial({'periods' : 200, 'jump_start' : 46, 'jump_length': 200,'jump_magnitude' : 0.0*noise_magnitude, 'trend_magnitude' : 0.1*noise_magnitude, 'noise' : noise_magnitude})
-mydat.breakpoint_recipe_values()
+mydat.resample('Y')
+mydat.detect_breakpoints()
 print("Now removing the trend through subtracting the linear trend.")
 mydat.do_trends()
 mydat.remove_trend('linear')
-mydat.breakpoint_recipe_values()
+mydat.detect_breakpoints()
 
 
 # # Example B3:  Breakpoint detection on difference values ("variance")
@@ -59,8 +60,10 @@ mydat = TrendLims1D('De Bilt T2m')
 mydat.load_file('../test_data/ehdb_t2m.nc')
 # Detect breakpoints
 mydat.subset(slice('1950-01-01','2017-12-31'))
-mydat.breakpoint_recipe_differences()
-mydat.plot(mode='differences')
+mydat.resample('Y')
+mydat.remove_trend(method='differences')
+mydat.detect_breakpoints()
+mydat.plot()
 
 
 # ## Example B4:  Breakpoint detection on a detrended dataset ("variance")
@@ -75,7 +78,7 @@ mydat.subset(slice('1910','2017'))
 mydat.do_trends()
 mydat.remove_trend('theilsen')
 mydat.plot()
-mydat.breakpoint_recipe_values()
+mydat.detect_breakpoints()
 
 
 # ## Example C1: Trend analysis on >100 years of data
@@ -109,18 +112,31 @@ mydat.trends
 # In[9]:
 
 
+import matplotlib.pyplot as plt
 mydat.reset()
 mydat.resample('Y')
 mydat.subset(slice('1910','2017'))
-mydat.plot()
+mydat.plot('original')
+plt.show()
 mydat.do_trends()
-mydat.do_residual_analysis('linear')
+mydat.remove_trend(method='polynomial')
+mydat.plot('detrended')
+plt.show()
+mydat.do_residual_analysis()
+#mydat.do_residual_analysis('linear')
 pass # dummy statement for preventing image showing up twice
+
+
+# In[10]:
+
+
+mydat.detect_breakpoints()
+mydat.breakpoints
 
 
 # ## Example E: Apply the concept of minimal detectable trends
 
-# In[10]:
+# In[11]:
 
 
 mydat.reset()
