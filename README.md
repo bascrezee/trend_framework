@@ -48,7 +48,9 @@ Trends and their limits evaluator guidance
 
 https://docs.google.com/document/d/1YbG07gdIMjLJmV8zHVy55daJbctNjsZUGNZFSxCuQ0w/edit#
 
-
+Contributing
+=============
+![Gitflow Workflow (Copyright: Atlassian)](figs/gitflow.png)
 
 # Usefull material
 - ATBD document from ECA&D: https://www.ecad.eu/documents/atbd.pdf
