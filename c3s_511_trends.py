@@ -26,6 +26,7 @@ breakpoint_test_names = {
     "Pettitt's test for single change-point detection" : 'Pettitt',
     'Buishand range test' : 'Buishand R',
     'Buishand U test' : 'Buishand U',
+    "Bartels's test for randomness" : 'Bartel'
 }
 
 def rvector_to_pydict(rvector):
@@ -70,7 +71,6 @@ def get_qc_class_and_string(pd_df):
     elif n_rejects>2:
         qc_class = 3
     return qc_class,qc_classes[qc_class]
-
 
 class TrendLims1D:
     '''  Object representing one-dimensional timeseries data and specified methods for detection of trends, breakpoints etc. 
@@ -151,6 +151,9 @@ class TrendLims1D:
     def __check_missingvalues__(self):
         if self.data_ts.isnull().any():
             print("Warning: the data contains missing values")
+            return True
+        else:
+            return False
 
     def reset(self):
         ''' Restore the timeseries data to the state right after reading in the file or having created the artificial data
@@ -246,7 +249,7 @@ class TrendLims1D:
         else:
             return results
 
-    def handle_missingdata(self,strategy='dropna'):
+    def handle_missingvalues(self,strategy='dropna'):
         ''' This function takes care of the missing data. 
         
         Parameters
@@ -255,6 +258,7 @@ class TrendLims1D:
             The strategy for handling missing data (either dropna or fillgaps)
         '''
         if strategy=='dropna':
+            print("Dropping missing values")
             self.data_ts = self.data_ts.dropna()
         elif strategy=='fillgaps':
             raise NotImplementedError
@@ -275,7 +279,7 @@ class TrendLims1D:
         self.__check_missingvalues__()
         self.__add_to_logbook__('Resampled to {0} frequency'.format(resamplefreq))
 
-    def breakpoint_recipe_values(self,resamplefreq='Y',rpackagename='trend'):
+    def detect_breakpoints(self,resamplefreq='Y',rpackagename='trend'):
         ''' Apply four homogeneity tests to yearly means of the data, similar to most climate variables in the ATBD from ECA&D
 
         The tests either accept or reject the null hypothesis (no breakpoints present):
@@ -298,7 +302,7 @@ class TrendLims1D:
         rpackagename='iki.dataclim':
             https://cran.r-project.org/web/packages/iki.dataclim/index.html
         '''
-        breakpoint_input = self.data_ts.resample(resamplefreq).mean()
+        breakpoint_input = self.data_ts.resample(resamplefreq).mean().dropna()
         if rpackagename=='trend':
             self.breakpoints = self.__test_breakpoint_rtrend__(breakpoint_input,['snh','pet','bhr','von'])
             self.qc_status_int,self.qc_status=get_qc_class_and_string(self.breakpoints)
@@ -432,31 +436,31 @@ class TrendLims1D:
         print("Values: {0}".format(qc_string_values))
         print("Absolute differences: {0}".format(qc_string_absdiffvalues))
 
-    def plot(self,label=None,mode='values',marker='.',ms=4):
+    def plot(self,label=None,marker='.',ms=4):
         self.__add_to_logbook__("Creating a plot with label: {0}".format(label))
-        if mode=='values':
-            self.data_ts.plot(label=label,marker=marker,ms=ms)
-        elif mode=='differences':
-            self.differences.plot(label=label,marker=marker,ms=ms)
-        plt.legend()
+        self.data_ts.plot(label=label,marker=marker,ms=ms)
+        if label is not None:
+            plt.legend()
 
-    def plot_breakpoints(self):
-        for bp_df,bp_color,shortname in zip([self.breakpoints_values,self.breakpoints_absdiffvalues],['r','b'],['on values','on absdiff']):
-            xvals = bp_df['estimate_formatted'].values
-            pvals = bp_df['p.value'].values
-            testnames = [breakpoint_test_names[testname] for testname in bp_df['method']]
-            y_base = plt.ylim()[0]
-            y_range = np.abs(plt.ylim()[1]-plt.ylim()[0])
-            y_offset = 0.02*y_range # 2% of the y axis range
-            
-            yvals = [y_base+i*y_offset for i in range(len(xvals))]
-            markers = ['x','+','.','*']
-            for xval,yval,marker,testname,pval in zip(xvals,yvals,markers,testnames,pvals):
-                testname = testname+' '+shortname
-                if pval < 0.01:
+    def plot_breakpoints(self,pval_thres=0.01):
+        ''' Plot the breakpoints which have p-values <= pval_thres.
+        '''
+        bp_df = self.breakpoints
+        bp_color = 'r'
+        xvals = bp_df['estimate_formatted'].values
+        pvals = bp_df['p.value'].values
+        testnames = [breakpoint_test_names[testname] for testname in bp_df['method']]
+        y_base = plt.ylim()[0]
+        y_range = np.abs(plt.ylim()[1]-plt.ylim()[0])
+        y_offset = 0.02*y_range # 2% of the y axis range
+
+        yvals = [y_base+i*y_offset for i in range(len(xvals))]
+        markers = ['x','+','.','*']
+        for xval,yval,marker,testname,pval in zip(xvals,yvals,markers,testnames,pvals):
+            if pval < pval_thres:
+                if str(xval)!='NaT':
                     plt.scatter(xval,yval,marker=marker,label=testname,color=bp_color)
-            plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.25),
-                      ncol=3, fancybox=True, shadow=True)
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.25), ncol=3, fancybox=True, shadow=True)
 
     def trend_mktest(self,alpha=0.05):
         mk_input = self.data_ts.values
@@ -513,9 +517,8 @@ class TrendLims1D:
         results_dict['slope'] = slope*(365.25*10) # From /day to /decade
         results_dict['slope_low'] = slope_low*(365.25*10) # From /day to /decade
         results_dict['slope_up'] = slope_up*(365.25*10) # From /day to /decade
+
         # Add a sign to Theilsen
-
-
         self.__add_to_logbook__('Calculated Theil-Sen slope')
         results_dict['method']='theilsen'
         results_dict['pvalue']=None # Trend Theilsen has no pvalue
@@ -570,23 +573,28 @@ class TrendLims1D:
             pass
         self.trends = df_trends
 
-    def remove_trend(self,fit_name=None):
+    def remove_trend(self,method=None):
         '''
         Remove a trend from the data. In case a linear trend on the data is expected, one 
         can use 'theilsen' or 'linear'. 
         For non-linear trends one can choose between either 'polynomial' or 'differences' where 
         the latter should be chosen in case of a fully stochastic trend.
         '''
-        if fit_name in ['linear','theilsen']:
-            self.data_ts = self.data_ts-self.fitted[fit_name]
-        elif fit_name=='polynomial':
+        if method in ['linear','theilsen']:
+            self.data_ts = self.data_ts-self.fitted[method]
+        elif method=='polynomial':
             xaxis = self.data_ts.index.to_julian_date().values
             yaxis = self.data_ts.values
             d,c,b,a = np.polyfit(xaxis,yaxis,3)
             y_fit = a+b*xaxis+c*xaxis**2+d*xaxis**3
             self.data_ts = self.data_ts-y_fit
-        else: 
-            print("Invalid fit_name: ",fit_name)
+        elif method=='differences':
+            #TODO implement this
+            diff = self.data_ts.diff()
+            diff = diff[slice(1,None)] # Cut the first value since it is NaN
+            self.data_ts = diff
+        else:
+            print("Invalid method ",method)
             raise ValueError
 
     def weatherhead_framework(self,trend_name='theilsen',trend_magnitude=None):
@@ -614,8 +622,10 @@ class TrendLims1D:
         [1] Weatherhead, Betsy & C. Reinsel, Gregory & C. Tiao, George & Meng, Xiao-Li & Choi, Dongseok & Cheang, Wai-Kwong & Keller, Teddie & DeLuisi, John & Wuebbles, Donald & Kerr, J & J. Miller, Alvin & Oltmans, Samuel. (1998). Factors affecting the detection of trends: Statistical considerations and applications to environmental data. Journal of Geophysical Research. 1031. 17149-17162. 10.1029/98JD00995. 
         '''
         self.data_ts = self.data_ts.resample('Y').mean()
+        if self.__check_missingvalues__():
+            self.handle_missingvalues()
         self.do_trends(trend_names=[trend_name])
-        self.remove_trend(fit_name=trend_name)
+        self.remove_trend(method=trend_name)
         # Calculate according to Weatherhead et al. 
         std_res = np.std(self.data_ts.values)
         acf_res = acf(self.data_ts.values,nlags=1)[-1]
@@ -633,14 +643,20 @@ class TrendLims1D:
         # The layout of this plot follows an example by Christoph Frei in his course 'Analysis of Weather
         # and Climate Data' at ETH Zurich
         # 
-        # If no fit_name is provided, the residues are calculated as the timeseries minus the mean value of the timeseries.
+        # If no fit_name is provided, the residues are calculated as the timeseries minus the mean value of the timeseries 
+        # in this case, the xaxis in the Tukey-Anscombe diagram is the time-axis (and not the fitted values).
         '''
+        if self.__check_missingvalues__():
+            print("Exiting residual analysis")
+            return None
         if fit_name==None:
             res = self.data_ts.values-self.data_ts.values.mean()
             tukey_anscombe_xaxis = self.data_ts.index
+            tukey_anscombe_xlabel = 'time'
         else:
             res = self.data_ts.values-self.fitted[fit_name]
             tukey_anscombe_xaxis = self.fitted[fit_name]
+            tukey_anscombe_xlabel = 'fitted'
 
         f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2,squeeze=False,constrained_layout=True,figsize=(8,6))
 
@@ -655,7 +671,7 @@ class TrendLims1D:
         ax3.scatter(tukey_anscombe_xaxis,res)
         ax3.set_title('Tukey-Anscombe')
         ax3.set_ylabel('residues')
-        ax3.set_xlabel('fitted')
+        ax3.set_xlabel(tukey_anscombe_xlabel)
 
         #TODO this needs predicted values  y = intercept + slope*x
         nlags = 14
