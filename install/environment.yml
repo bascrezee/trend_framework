@@ -1,0 +1,19 @@
+name: trends
+channels:
+ - r
+ - conda-forge
+ - defaults
+dependencies:
+ - python=3.6
+ - jupyter
+ - numpy
+ - pandas
+ - matplotlib
+ - iris
+ - scipy
+ - statsmodels
+ - pathos
+ - rpy2=2.9.4
+ - r-base
+ - r-codetools
+
