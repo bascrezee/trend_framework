@@ -7,21 +7,41 @@ In the first stage, the diagnostics will be tested on one dimensional data (eith
 
 The file _c3s_511_trends.py_ contains the class TrendLims1D in which different diagnostics are implemented, and more will be implemented in the future. The files with the extension `.ipynb` are Jupyter notebook files and serve as examples for using the framework. For users who have no experience with the Jupyter notebook, it is recommended to read sections 1.1 and 3 from [this tutorial](https://jupyter-notebook-beginner-guide.readthedocs.io/en/latest/what_is_jupyter.html#notebook-document).
 
-Installation [NEW]
-===================
+Installation
+===============
 
+### Creating the environment
+ - Create the environment needed for ESMValTool2 as described [here](https://esmvaltool.readthedocs.io/en/version2_development/user_guide2/index.html#installing-esmvaltool) with the Python 3 environment (note for ETH users: replace `python=3` with `python=3.6`)
+ - conda install -c r rpy2
+ - conda install jupyter
+ - conda install statsmodels
+ - conda install -c conda-forge pathos
+ - install the following R packages from an R terminal opened while the conda environment is activated (recommended):
+    - iki.dataclim
+      - lubridate
+      - zoo
+      - climdex.pcic
+    - trend
+    
+ - alternatively from Python while the conda environment is activated (not recommended):
+ ```
+ import rpy2.robjects.packages as rpackages
+ import rpy2.robjects as robjects
+
+ # import R's utility package
+ utils = rpackages.importr('utils')
+
+ # select a mirror for R packages
+ utils.chooseCRANmirror(ind=1) # select the first mirror in the list
+
+ utils.install_packages('trend')
+ if rpackages.isinstalled('trend'):
+    print("Succesfully installed the 'trend' R package from CRAN")
+ else:
+    print("Warning: installation of the 'trend' R package was not succesfull")
+ ```
 ### Clone this repository
-Navigate to the directory where you want the software to be installed and clone the master branch of this repository.
-
-### Create a new environment and install the R packages
-Navigate to the 'install' directory and run the following from a terminal: 
-`conda env create -f environment.yml`
-
-The above command might take a while. When it is finished, the required R packages can be installed. Edit the first and second line in the file `installR.r` to point to the right directories for your installation and run from a terminal:
-`./installR.r`
-
-### Check the installation
-Start the Jupyter notebook with the command `jupyter-notebook`. Open the notebook 'examples_general.ipynb' and run all cells in this notebook to see if the installation was succesfull. 
+Navigate to the directory where you want the software to be installed and clone this repository. The Jupyter notebook is started with the command `jupyter-notebook`.
 
 Trends and their limits evaluator guidance 
 ===========================================
