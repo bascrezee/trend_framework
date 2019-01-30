@@ -791,6 +791,24 @@ class TrendLims1D:
             trend = 0
         return trend, h, p, z
 
+    def apply_bfast(self,bfast_kwargs={}):
+        '''
+        '''
+        print("A first implementation of BFAST")
+        import rpy2.robjects.packages as rpackages
+        try:
+            rbfast = rpackages.importr('bfast')
+            rstats = rpackages.importr('stats')
+        except Exception as e:
+            print("Failed importing R packages, did you install them all [forecast,bfast,stats] correctly?")
+            print(str(e))
+        # First convert Pandas timeseries object to R ts
+        r_ts = pd_ts2r_ts(self.data_ts)
+        bfast_kwargs_default = {'h' : 0.15,'season' : "dummy",'max_iter' : 4,'breaks' : 1} # Just a first attempt which ran smoothly
+        bfast_kwargs_default.update(**bfast_kwargs)
+        result = rbfast.bfast(r_ts,**bfast_kwargs_default)
+        return result
+
     def __add_to_logbook__(self,logmessage):
         if self.verbose:
             print(logmessage)
