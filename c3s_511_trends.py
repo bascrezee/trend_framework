@@ -29,6 +29,24 @@ breakpoint_test_names = {
     "Bartels's test for randomness" : 'Bartel'
 }
 
+def pd_ts2r_ts(pd_ts):
+    '''Pandas timeseries (pd_ts) to R timeseries (r_ts) conversion
+    '''
+    from rpy2.robjects.vectors import IntVector,FloatVector
+    rstats = rpackages.importr('stats')
+    r_start = IntVector((pd_ts.index[0].year,pd_ts.index[0].month,pd_ts.index[0].day))
+    r_end = IntVector((pd_ts.index[-1].year,pd_ts.index[-1].month,pd_ts.index[-1].day)) 
+    freq_pandas2r_ts = {
+        # A dictionary for converting pandas.Series frequencies into R ts frequencies
+        'D' : 365, # is this correct, how about leap-years?
+        'M' : 12,
+        'Y' : 1,
+    }
+    r_freq = freq_pandas2r_ts[pd_ts.index.freqstr]
+    result = rstats.ts(FloatVector(pd_ts.values),start=r_start,end=r_end,frequency=r_freq)
+    return result
+
+
 def rvector_to_pydict(rvector):
     '''Conversion of R vector (a Python representation of an R object, module rpy2) to a Python dictionary
     
