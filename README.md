@@ -10,38 +10,16 @@ The file _c3s_511_trends.py_ contains the class TrendLims1D in which different d
 Installation
 ===============
 
-### Creating the environment
- - Create the environment needed for ESMValTool2 as described [here](https://esmvaltool.readthedocs.io/en/version2_development/user_guide2/index.html#installing-esmvaltool) with the Python 3 environment (note for ETH users: replace `python=3` with `python=3.6`)
- - conda install -c r rpy2
- - conda install jupyter
- - conda install statsmodels
- - conda install -c conda-forge pathos
- - install the following R packages from an R terminal opened while the conda environment is activated (recommended):
-    - iki.dataclim
-      - lubridate
-      - zoo
-      - climdex.pcic
-    - trend
-    
- - alternatively from Python while the conda environment is activated (not recommended):
- ```
- import rpy2.robjects.packages as rpackages
- import rpy2.robjects as robjects
-
- # import R's utility package
- utils = rpackages.importr('utils')
-
- # select a mirror for R packages
- utils.chooseCRANmirror(ind=1) # select the first mirror in the list
-
- utils.install_packages('trend')
- if rpackages.isinstalled('trend'):
-    print("Succesfully installed the 'trend' R package from CRAN")
- else:
-    print("Warning: installation of the 'trend' R package was not succesfull")
- ```
-### Clone this repository
-Navigate to the directory where you want the software to be installed and clone this repository. The Jupyter notebook is started with the command `jupyter-notebook`.
+ - Navigate to the directory where you want the software to be installed and clone this repository.
+ - Navigate to the `install` directory
+ - Create a new conda environment named `trend` (as specified in environment.yml): `conda env create -f environment.yml`
+ - Activate the environment: `conda activate trend`
+ - Add rpy2 as package: `conda install rpy2`
+ - Edit the file `installR.r` to point to the right installation path (see file) 
+ - Make the file executable `chmod +x ./installR.r`
+ - Execute it: `./installR.r`
+ - Wait for the script to be finished
+ - Check the installation by running  the example notebook. 
 
 Trends and their limits evaluator guidance 
 ===========================================
