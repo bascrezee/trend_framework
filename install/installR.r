@@ -1,4 +1,8 @@
 #!/net/exo/landclim/crezees/conda/envs/trends/bin/Rscript
+
+# edit the below line to the right installation directory
+# the right directory can be found by activating the conda environment and typing 'which R'
+# which returns:  '/net/exo/landclim/crezees/conda/envs/trends/bin/R' in this case
 installdir <- "/net/exo/landclim/crezees/conda/envs/trends/lib/R/library/"
 install.packages("forecast",installdir,repos='http://cran.us.r-project.org')
 install.packages("bfast",installdir,repos='http://cran.us.r-project.org')
