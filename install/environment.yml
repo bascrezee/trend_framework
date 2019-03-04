@@ -13,7 +13,6 @@ dependencies:
  - scipy
  - statsmodels
  - pathos
- - rpy2=2.9.4
  - r-base
  - r-codetools
 
