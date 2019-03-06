@@ -5,6 +5,7 @@ channels:
  - defaults
 dependencies:
  - python=3.6
+ - tornado=5
  - jupyter
  - numpy
  - pandas

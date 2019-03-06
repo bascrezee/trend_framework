@@ -1,7 +1,7 @@
 Trend framework
 ===============
 
-This is a private repository intended for development of the 'trends and their limits' framework from Oct 2018 within the C3S_511 project.
+This is a repository intended for development of the 'trends and their limits' framework from Oct 2018 within the C3S_511 project.
 
 In the first stage, the diagnostics will be tested on one dimensional data (either station data, or a single gridpoint extracted from a gridded dataset). This allows for the development of robust diagnostics that can later be applied to gridded data. The folder test_data contains a file with 2m temperature from the station 'De Bilt' in the Netherlands. This timeseries is relatively long and is homogenized.
 
@@ -16,8 +16,7 @@ Installation
  - Activate the environment: `conda activate trend`
  - Add rpy2 as package: `conda install rpy2`
  - Edit the file `installR.r` to point to the right installation path (see file) 
- - Make the file executable `chmod +x ./installR.r`
- - Execute it: `./installR.r`
+ - Run `Rscript installR.r`
  - Wait for the script to be finished
  - Check the installation by running  the example notebook. 
 

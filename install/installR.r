@@ -1,6 +1,4 @@
-#!/net/exo/landclim/crezees/conda/envs/trends/bin/Rscript
-
-# edit the below line to the right installation directory
+# edit the line below to the right directories
 # the right directory can be found by activating the conda environment and typing 'which R'
 # which returns:  '/net/exo/landclim/crezees/conda/envs/trends/bin/R' in this case
 installdir <- "/net/exo/landclim/crezees/conda/envs/trends/lib/R/library/"
