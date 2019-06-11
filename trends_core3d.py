@@ -110,7 +110,7 @@ def lineartrend(y,x=None, alpha=0.05):
     else:
         x = np.array(x, dtype=float).flatten()
     linoutput = linregress(x, y)
-    return linoutput.slope#, linoutput.pvalue
+    return linoutput.slope, linoutput.pvalue
 
 def theilslopes_fast(y,x=None):
     '''
