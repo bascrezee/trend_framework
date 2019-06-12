@@ -2,8 +2,7 @@ import numpy as np
 from scipy.stats.mstats import linregress
 from scipy.stats import norm
 import itertools as it
-
-
+import dask
 
 def linear_trend(inputdata):
     lintrend_da,linpvalue_da = dask.array.apply_along_axis(lineartrend1d,0,inputdata.data)
@@ -13,7 +12,7 @@ def linear_trend(inputdata):
     lintrend = template.copy()
     lintrend.values = lintrend_da
     lintrend.name += '_linslope'
-    lintrend.attrs['units'] = mydat.attrs['units'] + ' / timestep'
+    lintrend.attrs['units'] = inputdata.attrs['units'] + ' / timestep'
     # For its pvalue
     linpvalue = template.copy()
     linpvalue.values = linpvalue_da
@@ -27,7 +26,7 @@ def theilsen_trend(inputdata):
     theilsentrend = template.copy()
     theilsentrend.values = theilsentrend_da
     theilsentrend.name += '_theilsenslope'
-    theilsentrend.attrs['units'] = mydat.attrs['units'] + ' / timestep'
+    theilsentrend.attrs['units'] = inputdata.attrs['units'] + ' / timestep'
     return theilsentrend
 
 def mannkendall(inputdata):
@@ -35,8 +34,9 @@ def mannkendall(inputdata):
     template = inputdata[0:1].mean('time')
     mannkendall = template.copy()
     mannkendall.values = mannkendall_da
-    mannkendall.name += '_theilsenslope'
+    mannkendall.name += '_mk_test'
     mannkendall.attrs['info'] = '-1: a negative trend; 0: no trend; 1: a positive trend'
+    mannkendall.attrs['units'] = 1
     return mannkendall
 
 
