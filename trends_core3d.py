@@ -3,7 +3,44 @@ from scipy.stats.mstats import linregress
 from scipy.stats import norm
 import itertools as it
 
-def mannkendall(x, alpha=0.05):
+
+
+def linear_trend(inputdata):
+    lintrend_da,linpvalue_da = dask.array.apply_along_axis(lineartrend1d,0,inputdata.data)
+    # Now put results into a DataArray
+    # For the linear trend itself
+    template = inputdata[0:1].mean('time')
+    lintrend = template.copy()
+    lintrend.values = lintrend_da
+    lintrend.name += '_linslope'
+    lintrend.attrs['units'] = mydat.attrs['units'] + ' / timestep'
+    # For its pvalue
+    linpvalue = template.copy()
+    linpvalue.values = linpvalue_da
+    linpvalue.name = 'p-value of linear trend test'
+    linpvalue.attrs['units'] = 1
+    return lintrend, linpvalue
+
+def theilsen_trend(inputdata):
+    theilsentrend_da = dask.array.apply_along_axis(theilslopes1d,0,inputdata)
+    template = inputdata[0:1].mean('time')
+    theilsentrend = template.copy()
+    theilsentrend.values = theilsentrend_da
+    theilsentrend.name += '_theilsenslope'
+    theilsentrend.attrs['units'] = mydat.attrs['units'] + ' / timestep'
+    return theilsentrend
+
+def mannkendall(inputdata):
+    mannkendall_da = dask.array.apply_along_axis(mannkendall1d,0,inputdata)
+    template = inputdata[0:1].mean('time')
+    mannkendall = template.copy()
+    mannkendall.values = mannkendall_da
+    mannkendall.name += '_theilsenslope'
+    mannkendall.attrs['info'] = '-1: a negative trend; 0: no trend; 1: a positive trend'
+    return mannkendall
+
+
+def mannkendall1d(x, alpha=0.05):
     """
     This function is derived from code originally posted by Sat Kumar Tomer
     (satkumartomer@gmail.com)
@@ -103,7 +140,7 @@ def mannkendall(x, alpha=0.05):
         trend = 0
     return trend #, h, p, z
 
-def lineartrend(y,x=None, alpha=0.05):
+def lineartrend1d(y,x=None, alpha=0.05):
     y = np.array(y).flatten()
     if x is None:
         x = np.arange(len(y), dtype=float)
@@ -112,7 +149,7 @@ def lineartrend(y,x=None, alpha=0.05):
     linoutput = linregress(x, y)
     return linoutput.slope, linoutput.pvalue
 
-def theilslopes_fast(y,x=None):
+def theilslopes1d(y,x=None):
     '''
     Adapted from scipy.stats.theilslopes, leaving out calculation of confidence intervals and allowing for nan values.
     '''
