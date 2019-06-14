@@ -3,9 +3,16 @@ from scipy.stats.mstats import linregress
 from scipy.stats import norm
 import itertools as it
 import dask
+from scipy.signal import detrend
+from statsmodels.tsa.stattools import acf
+        
+def remove_trend(inputdata):
+    inputdata_detrended = inputdata.copy()
+    inputdata_detrended.values = dask.array.apply_over_axes(detrend,inputdata,[0]).compute()
+    return inputdata_detrended
 
 def linear_trend(inputdata):
-    lintrend_da,linpvalue_da = dask.array.apply_along_axis(lineartrend1d,0,inputdata.data)
+    lintrend_da,linpvalue_da = dask.array.apply_along_axis(lineartrend1d,0,inputdata)
     # Now put results into a DataArray
     # For the linear trend itself
     template = inputdata[0:1].mean('time')
@@ -139,6 +146,7 @@ def mannkendall1d(x, alpha=0.05):
     else:
         trend = 0
     return trend #, h, p, z
+
 
 def lineartrend1d(y,x=None, alpha=0.05):
     y = np.array(y).flatten()
