@@ -294,3 +294,31 @@ def theilslopes1d(y,x=None):
     slopes = deltay[deltax > 0] / deltax[deltax > 0]
     medslope = np.nanmedian(slopes)
     return medslope
+
+
+# Helper functions
+def validfrac(inputdata):
+    '''
+    This function calculates the valid fraction along the time axis from an xarray DataArray based on the numpy function `isfinite()`
+    
+    Parameters
+    ----------
+    inputdata : xarray DataArray
+    
+    Returns
+    -------
+    xarray DataArray:
+        valid fraction
+        
+    see also: np.isfinite()
+    '''
+    validfrac_da = dask.array.apply_along_axis(validfrac1d,0,inputdata)
+    template = inputdata[0:1].mean('time')
+    validfrac = template.copy()
+    validfrac.values = validfrac_da
+    validfrac.name += '_valid_fraction'
+    validfrac.attrs['units'] = 1
+    return validfrac
+
+def validfrac1d(x):
+    return np.isfinite(x).sum()/x.size
