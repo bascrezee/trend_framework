@@ -268,14 +268,25 @@ def mannkendall1d(x, alpha=0.05):
     return trend #, h, p, z
 
 
+
 def lineartrend1d(y,x=None, alpha=0.05):
     y = np.array(y).flatten()
     if x is None:
         x = np.arange(len(y), dtype=float)
     else:
         x = np.array(x, dtype=float).flatten()
-    linoutput = linregress(x, y)
-    return linoutput.slope, linoutput.pvalue
+    
+    # Do own masking of missing values
+    isfinite_mask = np.isfinite(y)
+    y = y[isfinite_mask]
+    x = x[isfinite_mask]
+    # Catching the case of all nan's along time axis
+    if y.size > 0:
+        linoutput = linregress(x, y)
+        return linoutput.slope, linoutput.pvalue
+    else:
+        return np.nan, np.nan
+
 
 def theilslopes1d(y,x=None):
     '''
