@@ -5,6 +5,7 @@ import itertools as it
 import dask
 from scipy.signal import detrend
 from statsmodels.tsa.stattools import acf
+import xarray as xr
 
 def weatherhead(inputdata, trend_magnitude=None):
     '''
@@ -54,6 +55,12 @@ def remove_trend(inputdata):
     xarray DataArray:
         detrended dataset
     '''
+    # Return all nan if any nan in array
+    if np.any(~np.isfinite(inputdata)):
+        result = np.ones_like(inputdata)
+        result[:] = np.nan
+        return result
+    
     inputdata_detrended = inputdata.copy()
     inputdata_detrended.values = dask.array.apply_over_axes(detrend,inputdata,[0])
     return inputdata_detrended
@@ -78,7 +85,10 @@ def linear_trend(inputdata):
     lintrend = template.copy()
     lintrend.values = lintrend_da
     lintrend.name += '_linslope'
-    lintrend.attrs['units'] = inputdata.attrs['units'] + ' / timestep'
+    if 'units' in inputdata.attrs:
+        lintrend.attrs['units'] = inputdata.attrs['units'] + ' / timestep'
+    else:
+        lintrend.attrs['units'] = 'per timestep'
     # For its pvalue
     linpvalue = template.copy()
     linpvalue.values = linpvalue_da
@@ -106,7 +116,10 @@ def theilsen_trend(inputdata):
     theilsentrend = template.copy()
     theilsentrend.values = theilsentrend_da
     theilsentrend.name += '_theilsenslope'
-    theilsentrend.attrs['units'] = inputdata.attrs['units'] + ' / timestep'
+    if 'units' in inputdata.attrs:
+        theilsentrend.attrs['units'] = inputdata.attrs['units'] + ' per timestep'
+    else:
+        theilsentrend.attrs['units'] = 'per timestep'
     return theilsentrend
 
 def mannkendall(inputdata):
@@ -156,6 +169,10 @@ def weatherhead1d(inputdata,trend_magnitude=None):
     -----------
     [1] Weatherhead, Betsy & C. Reinsel, Gregory & C. Tiao, George & Meng, Xiao-Li & Choi, Dongseok & Cheang, Wai-Kwong & Keller, Teddie & DeLuisi, John & Wuebbles, Donald & Kerr, J & J. Miller, Alvin & Oltmans, Samuel. (1998). Factors affecting the detection of trends: Statistical considerations and applications to environmental data. Journal of Geophysical Research. 1031. 17149-17162. 10.1029/98JD00995. 
     '''
+    # Return nan if any nan in array
+    if np.any(~np.isfinite(inputdata)):
+        return np.nan, np.nan, np.nan
+    
     # Calculate according to Weatherhead et al.
     std_res = np.std(inputdata)
     # This is a workaround, related to the following Dask issue: https://github.com/dask/dask/pull/3742
@@ -227,6 +244,9 @@ def mannkendall1d(x, alpha=0.05):
     x = x[~np.isnan(x)] # Check this.
     
     n = len(x)
+    
+    if n <= 1:
+        return np.nan
 
     # calculate S
     s = 0
@@ -281,12 +301,11 @@ def lineartrend1d(y,x=None, alpha=0.05):
     y = y[isfinite_mask]
     x = x[isfinite_mask]
     # Catching the case of all nan's along time axis
-    if y.size > 0:
+    if y.size > 1:
         linoutput = linregress(x, y)
         return linoutput.slope, linoutput.pvalue
     else:
         return np.nan, np.nan
-
 
 def theilslopes1d(y,x=None):
     '''
@@ -306,9 +325,8 @@ def theilslopes1d(y,x=None):
     medslope = np.nanmedian(slopes)
     return medslope
 
-
 # Helper functions
-def validfrac(inputdata):
+def validfrac(inputdata,axis=0):
     '''
     This function calculates the valid fraction along the time axis from an xarray DataArray based on the numpy function `isfinite()`
     
@@ -323,7 +341,7 @@ def validfrac(inputdata):
         
     see also: np.isfinite()
     '''
-    validfrac_da = dask.array.apply_along_axis(validfrac1d,0,inputdata)
+    validfrac_da = dask.array.apply_along_axis(validfrac1d,axis,inputdata)
     template = inputdata[0:1].mean('time')
     validfrac = template.copy()
     validfrac.values = validfrac_da
@@ -333,3 +351,19 @@ def validfrac(inputdata):
 
 def validfrac1d(x):
     return np.isfinite(x).sum()/x.size
+
+# Calculate valid fraction of aggregated data
+def validfrac_along_axis(x,axis):
+    return np.apply_along_axis(lambda y: np.isfinite(y).sum()/y.size,axis,x)
+
+# Advanced xarray helper functions
+def broadcast_time(inputdata,whichtime='time.dayofyear'):
+    '''
+    This function broadcasts time over the full dimension of the dataset
+    
+    The function is intended to check if changes in temporal coverage could impact the trend tests
+    '''
+    myds = inputdata.to_dataset()
+    doy,dummy = xr.broadcast(myds[whichtime],myds)
+    doy_masked = doy.where(np.isfinite(inputdata.values))
+    return doy_masked
