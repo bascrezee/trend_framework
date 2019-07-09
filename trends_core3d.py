@@ -357,4 +357,4 @@ def broadcast_time(inputdata,whichtime='time.dayofyear'):
     myds = inputdata.to_dataset()
     doy,dummy = xr.broadcast(myds[whichtime],myds)
     doy_masked = doy.where(np.isfinite(inputdata.values))
-return doy_masked
+    return doy_masked
