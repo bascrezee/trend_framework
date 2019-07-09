@@ -1,6 +1,8 @@
 Trend framework
 ===============
 
+ECV evaluator guidance
+===============================
 This is a repository containing some trend functionalities for use within the C3S_511 project. The main functionalities are found in the file `trends_core3d.py` and their usage is shown in the example notebook `example_trends_3d_cds-satellite-soil-moisture.ipynb`. For users who have no experience with the Jupyter notebook, it is recommended to read sections 1.1 and 3 from [this tutorial](https://jupyter-notebook-beginner-guide.readthedocs.io/en/latest/what_is_jupyter.html#notebook-document).
 
 Installation for ECV evaluators
