@@ -621,7 +621,8 @@ class TrendLims1D:
         results_dict['method'] = 'theilsen'
         results_dict['pvalue'] = None  # Trend Theilsen has no pvalue
         return results_dict
-
+    
+    
     def do_trends(self, trend_names=['mk', 'linear', 'theilsen'], alpha=0.05):
         ''' This function calls the different trend tests.
 

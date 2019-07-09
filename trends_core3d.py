@@ -3,16 +3,92 @@ from scipy.stats.mstats import linregress
 from scipy.stats import norm
 import itertools as it
 import dask
+from scipy.signal import detrend
+from statsmodels.tsa.stattools import acf
+import xarray as xr
+
+def weatherhead(inputdata, trend_magnitude=None):
+    '''
+    This function applies the Weatherhead framework (see function weatherhead1d) to a xarray DataArray
+    
+    Parameters
+    ----------
+    inputdata : xarray DataArray
+        the DataArray to which the function should be applied
+    trend_magnitude : float
+        the trend magnitude (units: per year) in which one is interested
+    
+    Returns
+    -------
+    three xarray DataArrays:
+        standard deviation ; lag-1 autocorellation ; n_star 
+    '''
+    std_res_da, acf_res_da, n_star_da = dask.array.apply_along_axis(weatherhead1d,0,inputdata,trend_magnitude=trend_magnitude)
+    # Now put results into a DataArray
+    # For std_res
+    template = inputdata[0:1].mean('time')
+    std_res = template.copy()
+    std_res.values = std_res_da
+    std_res.name += 'std of {0}'.format(template.name)
+    # For acf_res
+    acf_res = template.copy()
+    acf_res.values = acf_res_da
+    acf_res.name += 'acf of {0}'.format(template.name)
+    # For n_star
+    n_star = template.copy()
+    n_star.values = n_star_da
+    n_star.name = 'nstar of {0}'.format(template.name)
+    n_star.attrs['units'] = 'years'
+    return std_res,acf_res,n_star
+    
+def remove_trend(inputdata):
+    '''
+    This function detrends an xarray DataArray using a gridpoint-wise least square error linear fit (see scipy.signal.detrend). 
+    
+    Parameters
+    ----------
+    inputdata : xarray DataArray
+        the DataArray that should be detrended
+    
+    Returns
+    -------
+    xarray DataArray:
+        detrended dataset
+    '''
+    # Return all nan if any nan in array
+    if np.any(~np.isfinite(inputdata)):
+        result = np.ones_like(inputdata)
+        result[:] = np.nan
+        return result
+    
+    inputdata_detrended = inputdata.copy()
+    inputdata_detrended.values = dask.array.apply_over_axes(detrend,inputdata,[0])
+    return inputdata_detrended
 
 def linear_trend(inputdata):
-    lintrend_da,linpvalue_da = dask.array.apply_along_axis(lineartrend1d,0,inputdata.data)
+    '''
+    This function calculates linear trend and p-value from an xarray DataArray
+    
+    Parameters
+    ----------
+    inputdata : xarray DataArray
+    
+    Returns
+    -------
+    xarray DataArray (two times):
+        linear trend ; p-value
+    '''
+    lintrend_da,linpvalue_da = dask.array.apply_along_axis(lineartrend1d,0,inputdata)
     # Now put results into a DataArray
     # For the linear trend itself
     template = inputdata[0:1].mean('time')
     lintrend = template.copy()
     lintrend.values = lintrend_da
     lintrend.name += '_linslope'
-    lintrend.attrs['units'] = inputdata.attrs['units'] + ' / timestep'
+    if 'units' in inputdata.attrs:
+        lintrend.attrs['units'] = inputdata.attrs['units'] + ' / timestep'
+    else:
+        lintrend.attrs['units'] = 'per timestep'
     # For its pvalue
     linpvalue = template.copy()
     linpvalue.values = linpvalue_da
@@ -21,15 +97,46 @@ def linear_trend(inputdata):
     return lintrend, linpvalue
 
 def theilsen_trend(inputdata):
+    '''
+    This function calculates theilsen slopes from an xarray DataArray
+    
+    Parameters
+    ----------
+    inputdata : xarray DataArray
+    
+    Returns
+    -------
+    xarray DataArray:
+        theilsen slope
+        
+    see also: theilslopes1d
+    '''
     theilsentrend_da = dask.array.apply_along_axis(theilslopes1d,0,inputdata)
     template = inputdata[0:1].mean('time')
     theilsentrend = template.copy()
     theilsentrend.values = theilsentrend_da
     theilsentrend.name += '_theilsenslope'
-    theilsentrend.attrs['units'] = inputdata.attrs['units'] + ' / timestep'
+    if 'units' in inputdata.attrs:
+        theilsentrend.attrs['units'] = inputdata.attrs['units'] + ' per timestep'
+    else:
+        theilsentrend.attrs['units'] = 'per timestep'
     return theilsentrend
 
 def mannkendall(inputdata):
+    '''
+    This function calculates Mann-Kendall trend test from an xarray DataArray
+    
+    Parameters
+    ----------
+    inputdata : xarray DataArray
+    
+    Returns
+    -------
+    xarray DataArray:
+        Mann Kendall test outcome
+        
+    see also: mannkendall1d
+    '''
     mannkendall_da = dask.array.apply_along_axis(mannkendall1d,0,inputdata)
     template = inputdata[0:1].mean('time')
     mannkendall = template.copy()
@@ -39,6 +146,40 @@ def mannkendall(inputdata):
     mannkendall.attrs['units'] = 1
     return mannkendall
 
+def weatherhead1d(inputdata,trend_magnitude=None):
+    ''' This framework follows  Weatherhead et al. 1998 [1] for estimating the amount of years needed to detect a trend of certain magnitude with a probability of 90%.
+    Data has to be provided with yearly frequency (e.g. yearly means, means for DJF, etc.)
+    Parameters
+    ----------
+    trend_name : str
+        The name of the trend method used for detrending the data
+    trend_magnitude : float
+        The magnitude of the trend in [data units/decade] in which one would be interested
+    Returns
+    -------
+        A dictionary containing:
+            trend_magnitude : same as above
+            std_res : the standard deviation of the residuals
+            acf_res : the 1-lag autocorrelation
+            n_star : the estimated number of years
+    References
+    -----------
+    [1] Weatherhead, Betsy & C. Reinsel, Gregory & C. Tiao, George & Meng, Xiao-Li & Choi, Dongseok & Cheang, Wai-Kwong & Keller, Teddie & DeLuisi, John & Wuebbles, Donald & Kerr, J & J. Miller, Alvin & Oltmans, Samuel. (1998). Factors affecting the detection of trends: Statistical considerations and applications to environmental data. Journal of Geophysical Research. 1031. 17149-17162. 10.1029/98JD00995. 
+    '''
+    # Return nan if any nan in array
+    if np.any(~np.isfinite(inputdata)):
+        return np.nan, np.nan, np.nan
+    
+    # Calculate according to Weatherhead et al.
+    std_res = np.std(inputdata)
+    # This is a workaround, related to the following Dask issue: https://github.com/dask/dask/pull/3742
+    if len(inputdata)==1:
+        acf_res = inputdata
+    else:
+        acf_res = acf(inputdata, nlags=1)[1]
+    n_star = ((3.3 * std_res / np.abs(trend_magnitude)) * (
+        (1 + acf_res) / (1 - acf_res))**.5)**(2. / 3.)
+    return std_res, acf_res, n_star
 
 def mannkendall1d(x, alpha=0.05):
     """
@@ -59,21 +200,17 @@ def mannkendall1d(x, alpha=0.05):
     viewed as an exploratory analysis and is most appropriately used to
     identify stations where changes are significant or of large magnitude and
     to quantify these findings.
-
     #############################################################################
     MIT License
     Copyright (c) 2017 Michael Schramm
-
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
     in the Software without restriction, including without limitation the rights
     to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
     copies of the Software, and to permit persons to whom the Software is
     furnished to do so, subject to the following conditions:
-
     The above copyright notice and this permission notice shall be included in all
     copies or substantial portions of the Software.
-
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -82,8 +219,6 @@ def mannkendall1d(x, alpha=0.05):
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
     #############################################################################    
-
-
     Input:
         x:   a vector of data
         alpha: significance level (0.05 default)
@@ -100,6 +235,9 @@ def mannkendall1d(x, alpha=0.05):
     x = x[~np.isnan(x)] # Check this.
     
     n = len(x)
+    
+    if n <= 1:
+        return np.nan
 
     # calculate S
     s = 0
@@ -140,14 +278,25 @@ def mannkendall1d(x, alpha=0.05):
         trend = 0
     return trend #, h, p, z
 
+
+
 def lineartrend1d(y,x=None, alpha=0.05):
     y = np.array(y).flatten()
     if x is None:
         x = np.arange(len(y), dtype=float)
     else:
         x = np.array(x, dtype=float).flatten()
-    linoutput = linregress(x, y)
-    return linoutput.slope, linoutput.pvalue
+    
+    # Do own masking of missing values
+    isfinite_mask = np.isfinite(y)
+    y = y[isfinite_mask]
+    x = x[isfinite_mask]
+    # Catching the case of all nan's along time axis
+    if y.size > 1:
+        linoutput = linregress(x, y)
+        return linoutput.slope, linoutput.pvalue
+    else:
+        return np.nan, np.nan
 
 def theilslopes1d(y,x=None):
     '''
@@ -166,3 +315,46 @@ def theilslopes1d(y,x=None):
     slopes = deltay[deltax > 0] / deltax[deltax > 0]
     medslope = np.nanmedian(slopes)
     return medslope
+
+# Helper functions
+def validfrac(inputdata,axis=0):
+    '''
+    This function calculates the valid fraction along the time axis from an xarray DataArray based on the numpy function `isfinite()`
+    
+    Parameters
+    ----------
+    inputdata : xarray DataArray
+    
+    Returns
+    -------
+    xarray DataArray:
+        valid fraction
+        
+    see also: np.isfinite()
+    '''
+    validfrac_da = dask.array.apply_along_axis(validfrac1d,axis,inputdata)
+    template = inputdata[0:1].mean('time')
+    validfrac = template.copy()
+    validfrac.values = validfrac_da
+    validfrac.name += '_valid_fraction'
+    validfrac.attrs['units'] = 1
+    return validfrac
+
+def validfrac1d(x):
+    return np.isfinite(x).sum()/x.size
+
+# Calculate valid fraction of aggregated data
+def validfrac_along_axis(x,axis):
+    return np.apply_along_axis(lambda y: np.isfinite(y).sum()/y.size,axis,x)
+
+# Advanced xarray helper functions
+def broadcast_time(inputdata,whichtime='time.dayofyear'):
+    '''
+    This function broadcasts time over the full dimension of the dataset
+    
+    The function is intended to check if changes in temporal coverage could impact the trend tests
+    '''
+    myds = inputdata.to_dataset()
+    doy,dummy = xr.broadcast(myds[whichtime],myds)
+    doy_masked = doy.where(np.isfinite(inputdata.values))
+return doy_masked
