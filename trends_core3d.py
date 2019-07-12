@@ -232,7 +232,7 @@ def mannkendall1d(x, alpha=0.05):
       >>> x = np.random.rand(100)
       >>> trend,h,p,z = mk_test(x,0.05)
     """
-    x = x[~np.isnan(x)] # Check this.
+    x = x[~np.isnan(x)]
     
     n = len(x)
     
@@ -291,7 +291,7 @@ def lineartrend1d(y,x=None, alpha=0.05):
     isfinite_mask = np.isfinite(y)
     y = y[isfinite_mask]
     x = x[isfinite_mask]
-    # Catching the case of all nan's along time axis
+    # Catching the case of less than two valid points
     if y.size > 1:
         linoutput = linregress(x, y)
         return linoutput.slope, linoutput.pvalue
@@ -309,12 +309,22 @@ def theilslopes1d(y,x=None):
         x = np.array(x, dtype=float).flatten()
     if len(x) != len(y):
         raise ValueError("Incompatible lengths ! (%s<>%s)" % (len(y), len(x)))
-    # Compute sorted slopes only when deltax > 0
-    deltax = x[:, np.newaxis] - x
-    deltay = y[:, np.newaxis] - y
-    slopes = deltay[deltax > 0] / deltax[deltax > 0]
-    medslope = np.nanmedian(slopes)
-    return medslope
+    # Do own masking of missing values
+    isfinite_mask = np.isfinite(y)
+    y = y[isfinite_mask]
+    x = x[isfinite_mask]
+
+    # Catching the case of less than two valid points
+    if y.size > 1:
+        # Compute sorted slopes only when deltax > 0
+        deltax = x[:, np.newaxis] - x
+        deltay = y[:, np.newaxis] - y
+        slopes = deltay[deltax > 0] / deltax[deltax > 0]
+        medslope = np.nanmedian(slopes)
+        return medslope
+    else:
+        return np.nan
+
 
 # Helper functions
 def validfrac(inputdata,axis=0):
