@@ -2,8 +2,11 @@ import numpy as np
 from scipy.stats import pearsonr
 from statsmodels.tsa.stattools import acf
 from scipy.stats import norm
+from scipy.stats.mstats import linregress
+from scipy.signal import detrend
 
-
+def standardize1d(x):
+    return (x-np.nanmean(x))/np.nanstd(x)
 
 def pearsonr1d(a,b):
     commonmask = (np.isfinite(a) & np.isfinite(b))

@@ -73,7 +73,6 @@ def parallel_apply_along_axis(func1d, axis, arr, *args, **kwargs):
     if effective_axis != axis and result.ndim==indim:
         result = result.swapaxes(axis, effective_axis)
     return result
-        
 
 def unpacking_apply_along_axis(all_args):
     """
@@ -87,4 +86,4 @@ def unpacking_apply_along_axis(all_args):
     Taken from: https://stackoverflow.com/questions/45526700/easy-parallelization-of-numpy-apply-along-axis
     """
     (func1d, axis, arr, args, kwargs) = all_args
-    return np.apply_along_axis(func1d, axis, arr,*args,**kwargs)
+    return np.apply_along_axis(func1d, axis, arr, *args, **kwargs)

@@ -1,9 +1,8 @@
 import numpy as np
-from scipy.stats.mstats import linregress
 import itertools as it
 import dask
-from scipy.signal import detrend
 import xarray as xr
+from diag1d import *
 
 def weatherhead(inputdata, trend_magnitude=None):
     '''
