@@ -7,3 +7,4 @@ figs
 test_data
 workdir
 __pycache__
+*.nc
