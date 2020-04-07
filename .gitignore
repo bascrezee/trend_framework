@@ -4,3 +4,6 @@ developing.ipynb
 .tex
 notebooks
 figs
+test_data
+workdir
+__pycache__
