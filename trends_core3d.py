@@ -3,6 +3,7 @@ import itertools as it
 import dask
 import xarray as xr
 from diag1d import *
+from .diag1d import *
 
 def weatherhead(inputdata, trend_magnitude=None):
     '''
