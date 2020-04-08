@@ -31,24 +31,28 @@ parser.add_argument('--enddate',
                     help='end date as YYYY-MM')
 parser.add_argument('--downsample',
                     '-d',
-                    default=None,
-                    type=int,
-                    help='Downsample horizontal resolution by taking only 1 in d gridpoints')
-parser.add_argument('--seltime',
+                    action='store_true',
+                    help='Downsample horizontal resolution (one out of 10 gridpoints; for testing)')
+parser.add_argument('--period',
                    '-t',
                     default='year',
-                    help='Time aggregation (year; DJF; MAM; JJA; SON)')
+                    help='Time period (year; DJF; MAM; JJA; SON)')
 parser.add_argument('--datasetname',
                     '-n',
                     default=None,
                     help='Name of the output file.')
-parser.add_argument('--aggregation',
+parser.add_argument('--statistics',
                     '-a',
                     default='mean',
-                    help='Statistics to be applied.')
-
+                    help='Statistics to be applied over defined period.')
+parser.add_argument('--alpha',
+                   default=0.05,
+                   type=float,
+                   help='significance level for mann-kendall test')
 
 args = parser.parse_args()
+
+
 
 logger.info("Opening dataset.")
 data = xr.open_mfdataset(args.pattern, combine='by_coords')
@@ -56,36 +60,41 @@ data = data[args.varname]
 logger.info("Selecting time period.")
 data = data.loc[dict(time=slice(args.startdate, args.enddate))]
 if args.downsample:
-    logger.info(f"Downsampling spatial resolution (1 out of {args.downsample} gridpoints).")
-    data = data[:, ::args.downsample, ::args.downsample]
+    logger.info(f"Downsampling spatial resolution (1 out of 10 gridpoints).")
+    data = data[:, ::10, ::10]
 
-# Now convert to Iris for nice preprocessor functions
+# Now convert to Iris for using esmvalcore preprocessor functions
 logger.debug("Converting to Iris cube")
 cube = data.to_iris()
 
-if args.seltime in ['DJF', 'MAM', 'JJA', 'SON']:
-    logger.info(f"Selecting season {args.seltime}")
-    cube = pp.extract_season(cube, args.seltime)
+if args.period in ['DJF', 'MAM', 'JJA', 'SON']:
+    logger.info(f"Statistics over season {args.period}")
+    cube = pp.extract_season(cube, args.period)
 else:
     logger.info(f"Statistics over full year")
 
-logger.info(f"Calculating {args.aggregation} over period")
-cube = pp.annual_statistics(cube, operator=args.aggregation)
+logger.info(f"Calculating statistics '{args.statistics}' over period")
+cube = pp.annual_statistics(cube, operator=args.statistics)
 
 # Back to xarray
 data = xr.DataArray.from_iris(cube)
 logger.info('Calculating theil-sen trend')
 theilsen = theilsen_trend(data)
 logger.info('Calculating Mann Kendall test')
-mk = mannkendall(data)
+mk = mannkendall(data, alpha=args.alpha)
 
 # Mask theilsen with mk test results
 theilsen = theilsen.where(mk!=0, np.nan)
 result = xr.merge([theilsen, mk])
 
+
+corename = f"{args.period}{args.statistics}_{args.startdate}-{args.enddate}_alpha{args.alpha}"
+namelist = [corename]
 if args.datasetname:
-    outname = f'trend_{args.datasetname}_{args.timemean}_{args.startdate}_{args.enddate}.nc'
-else:
-    outname = f'trend_{args.seltime}_{args.startdate}_{args.enddate}.nc'
+    namelist.insert(0, args.datasetname)
+if args.downsample:
+    namelist.append('downsampled')
+outname = '_'.join(namelist)+'.nc'
+
 logger.info(f'Saving: {outname}')
 result.to_netcdf(outname)

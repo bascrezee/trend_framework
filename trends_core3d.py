@@ -119,7 +119,7 @@ def theilsen_trend(inputdata):
         theilsentrend.attrs['units'] = 'per timestep'
     return theilsentrend
 
-def mannkendall(inputdata):
+def mannkendall(inputdata, alpha=0.05):
     '''
     This function calculates Mann-Kendall trend test from an xarray DataArray
     
@@ -134,7 +134,7 @@ def mannkendall(inputdata):
         
     see also: mannkendall1d
     '''
-    mannkendall_da = dask.array.apply_along_axis(mannkendall1d,0,inputdata)
+    mannkendall_da = dask.array.apply_along_axis(mannkendall1d,0,inputdata, alpha=alpha)
     template = inputdata[0:1].mean('time')
     mannkendall = template.copy()
     mannkendall.values = mannkendall_da
