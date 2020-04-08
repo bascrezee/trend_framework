@@ -79,6 +79,8 @@ theilsen = theilsen_trend(data)
 logger.info('Calculating Mann Kendall test')
 mk = mannkendall(data)
 
+# Mask theilsen with mk test results
+theilsen = theilsen.where(mk!=0, np.nan)
 result = xr.merge([theilsen, mk])
 
 if args.datasetname:
