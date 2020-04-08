@@ -88,7 +88,7 @@ theilsen = theilsen.where(mk!=0, np.nan)
 result = xr.merge([theilsen, mk])
 
 
-corename = f"{args.period}{args.statistics}_{args.startdate}-{args.enddate}_alpha{args.alpha}"
+corename = f"theilsenmk_{args.period}{args.statistics}_{args.startdate}-{args.enddate}_alpha{str(args.alpha).replace('.','-')}"
 namelist = [corename]
 if args.datasetname:
     namelist.insert(0, args.datasetname)
