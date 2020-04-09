@@ -84,8 +84,9 @@ logger.info('Calculating Mann Kendall test')
 mk = mannkendall(data, alpha=args.alpha)
 
 # Mask theilsen with mk test results
-theilsen = theilsen.where(mk!=0, np.nan)
-result = xr.merge([theilsen, mk])
+theilsen_masked = theilsen.where(mk!=0, np.nan)
+theilsen_masked.name += '_masked'
+result = xr.merge([theilsen_masked, theilsen, mk])
 
 
 corename = f"theilsenmk_{args.period}{args.statistics}_{args.startdate}-{args.enddate}_alpha{str(args.alpha).replace('.','-')}"
@@ -98,3 +99,5 @@ outname = '_'.join(namelist)+'.nc'
 
 logger.info(f'Saving: {outname}')
 result.to_netcdf(outname)
+
+git log --graph --all --decorate
