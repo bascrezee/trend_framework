@@ -99,5 +99,3 @@ outname = '_'.join(namelist)+'.nc'
 
 logger.info(f'Saving: {outname}')
 result.to_netcdf(outname)
-
-git log --graph --all --decorate
