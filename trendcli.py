@@ -55,8 +55,11 @@ args = parser.parse_args()
 
 
 logger.info("Opening dataset.")
-data = xr.open_mfdataset(args.pattern, combine='by_coords')
-data = data[args.varname]
+
+earthreader.read(args.pattern, args.varname, method='xarray')
+#data = xr.open_mfdataset(args.pattern, combine='by_coords')
+#data = data[args.varname]
+
 logger.info("Selecting time period.")
 data = data.loc[dict(time=slice(args.startdate, args.enddate))]
 if args.downsample:
