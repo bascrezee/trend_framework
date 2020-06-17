@@ -58,7 +58,7 @@ args = parser.parse_args()
 
 logger.info("Opening dataset.")
 
-earthreader.read(args.pattern, args.varname, method='xarray')
+data = earthreader.read(args.pattern, args.varname, method='xarray')
 #data = xr.open_mfdataset(args.pattern, combine='by_coords')
 #data = data[args.varname]
 
