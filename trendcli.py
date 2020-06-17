@@ -1,11 +1,13 @@
 #!/net/exo/landclim/crezees/conda/envs/jupyterlab/bin/python
-"""Command line interface to the trend framework""" 
+"""Command line interface to the trend framework"""
 import xarray as xr
 import logging
 import esmvalcore.preprocessor as pp
 import argparse
 from trends_core3d import *
 import sys
+
+import earthreader
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
