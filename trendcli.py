@@ -69,20 +69,25 @@ if args.downsample:
     data = data[:, ::10, ::10]
 
 # Now convert to Iris for using esmvalcore preprocessor functions
-logger.debug("Converting to Iris cube")
-cube = data.to_iris()
+#logger.debug("Converting to Iris cube")
+#cube = data.to_iris()
 
 if args.period in ['DJF', 'MAM', 'JJA', 'SON']:
     logger.info(f"Statistics over season {args.period}")
-    cube = pp.extract_season(cube, args.period)
+    data = data.where(data['time.season'] == args.period)
+    data = data.rolling(min_periods=3, center=True, time=3).mean()
+    data = data.groupby('time.year').mean('time')
+    # Rename year to time, needed for downstream functionality
+    data = data.rename({'year' : 'time'})
 else:
     logger.info(f"Statistics over full year")
+    data = data.groupby('time.year').mean('time')
+    # Rename year to time, needed for downstream functionality
+    data = data.rename({'year' : 'time'})
 
 logger.info(f"Calculating statistics '{args.statistics}' over period")
-cube = pp.annual_statistics(cube, operator=args.statistics)
 
-# Back to xarray
-data = xr.DataArray.from_iris(cube)
+
 logger.info('Calculating theil-sen trend')
 theilsen = theilsen_trend(data)
 logger.info('Calculating Mann Kendall test')
