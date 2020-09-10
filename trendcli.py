@@ -17,11 +17,11 @@ parser = argparse.ArgumentParser(description=__doc__)
 
 parser.add_argument('--pattern',
                     '-p',
-                    default=None,
+                    required=True,
                     help='pattern of input files')
 parser.add_argument('--varname',
                     '-v',
-                    default=None,
+                    required=True,
                     help='variable to select')
 parser.add_argument('--startdate',
                     '-s',
@@ -38,7 +38,7 @@ parser.add_argument('--downsample',
 parser.add_argument('--period',
                    '-t',
                     default='year',
-                    help='Time period (year; DJF; MAM; JJA; SON)')
+                    help='Time period (year [default]; DJF; MAM; JJA; SON)')
 parser.add_argument('--datasetname',
                     '-n',
                     default=None,
