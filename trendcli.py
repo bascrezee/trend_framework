@@ -59,18 +59,12 @@ args = parser.parse_args()
 logger.info("Opening dataset.")
 
 data = earthreader.read(args.pattern, args.varname, method='xarray')
-#data = xr.open_mfdataset(args.pattern, combine='by_coords')
-#data = data[args.varname]
 
 logger.info("Selecting time period.")
 data = data.loc[dict(time=slice(args.startdate, args.enddate))]
 if args.downsample:
     logger.info(f"Downsampling spatial resolution (1 out of 10 gridpoints).")
     data = data[:, ::10, ::10]
-
-# Now convert to Iris for using esmvalcore preprocessor functions
-#logger.debug("Converting to Iris cube")
-#cube = data.to_iris()
 
 if args.period in ['DJF', 'MAM', 'JJA', 'SON']:
     logger.info(f"Statistics over season {args.period}")
