@@ -4,10 +4,12 @@ import xarray as xr
 import logging
 import esmvalcore.preprocessor as pp
 import argparse
+import os
 from trends_core3d import *
 import sys
 
 import earthreader
+from trendplotting import trend_mapplot
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -43,6 +45,10 @@ parser.add_argument('--datasetname',
                     '-n',
                     default=None,
                     help='Name of the output file.')
+parser.add_argument('--outputdir',
+                    '-o',
+                    required=True,
+                    help='Name of the output directory (will be created).')
 parser.add_argument('--statistics',
                     '-a',
                     default='mean',
@@ -52,13 +58,18 @@ parser.add_argument('--alpha',
                    type=float,
                    help='significance level for mann-kendall test')
 
+
 args = parser.parse_args()
 
+# Make output directory
+datadir = f'{args.outputdir}/'
+os.makedirs(datadir, exist_ok=True)
 
 
 logger.info("Opening dataset.")
 
 data = earthreader.read(args.pattern, args.varname, method='xarray')
+data_units = data.units
 
 logger.info("Selecting time period.")
 data = data.loc[dict(time=slice(args.startdate, args.enddate))]
@@ -73,17 +84,20 @@ if args.period in ['DJF', 'MAM', 'JJA', 'SON']:
     data = data.groupby('time.year').mean('time')
     # Rename year to time, needed for downstream functionality
     data = data.rename({'year' : 'time'})
+    data.compute()
 else:
     logger.info(f"Statistics over full year")
     data = data.groupby('time.year').mean('time')
     # Rename year to time, needed for downstream functionality
     data = data.rename({'year' : 'time'})
+    data.compute()
 
 logger.info(f"Calculating statistics '{args.statistics}' over period")
 
 
 logger.info('Calculating theil-sen trend')
 theilsen = theilsen_trend(data)
+theilsen.attrs['units'] = data_units + ' year-1'
 logger.info('Calculating Mann Kendall test')
 mk = mannkendall(data, alpha=args.alpha)
 
@@ -103,3 +117,8 @@ outname = '_'.join(namelist)+'.nc'
 
 logger.info(f'Saving: {outname}')
 result.to_netcdf(outname)
+
+# Plotting part
+trend_mapplot(theilsen_masked, args)
+
+
