@@ -9,6 +9,7 @@ from trends_core3d import *
 import sys
 
 import earthreader
+import matplotlib.pyplot as plt
 from trendplotting import trend_mapplot
 
 logger = logging.getLogger(__name__)
@@ -107,7 +108,7 @@ theilsen_masked.name += '_masked'
 result = xr.merge([theilsen_masked, theilsen, mk])
 
 
-corename = f"theilsenmk_{args.period}{args.statistics}_{args.startdate}-{args.enddate}_alpha{str(args.alpha).replace('.','-')}"
+corename = f"{args.varname}_theilsenmk_{args.period}{args.statistics}_{args.startdate}-{args.enddate}_alpha{str(args.alpha).replace('.','-')}"
 namelist = [corename]
 if args.datasetname:
     namelist.insert(0, args.datasetname)
@@ -115,10 +116,6 @@ if args.downsample:
     namelist.append('downsampled')
 outname = '_'.join(namelist)+'.nc'
 
-logger.info(f'Saving: {outname}')
-result.to_netcdf(outname)
-
-# Plotting part
-trend_mapplot(theilsen_masked, args)
-
-
+datasavename = os.path.join(datadir, outname)
+logger.info(f'Saving: {datasavename}')
+result.to_netcdf(datasavename)
