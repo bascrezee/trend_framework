@@ -1,6 +1,7 @@
-#!/net/exo/landclim/crezees/conda/envs/jupyterlab/bin/python
+#!/usr/bin/env python
 """Command line interface to the trend framework"""
 import xarray as xr
+import dask
 import logging
 import esmvalcore.preprocessor as pp
 import argparse
@@ -69,6 +70,7 @@ os.makedirs(datadir, exist_ok=True)
 
 logger.info("Opening dataset.")
 
+dask.config.set(**{'array.slicing.split_large_chunks': False})
 data = earthreader.read(args.pattern, args.varname, method='xarray')
 data_units = data.units
 
