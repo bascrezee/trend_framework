@@ -1,0 +1,17 @@
+name: trend
+channels:
+  - conda-forge
+  - esmvalgroup
+dependencies:
+  - xarray
+  - ipython
+  - cf_units
+  - dask
+  - iris
+  - matplotlib
+  - numpy
+  - pandas
+  - yaml
+  - statsmodels
+  - rpy2
+  - esmvalcore
